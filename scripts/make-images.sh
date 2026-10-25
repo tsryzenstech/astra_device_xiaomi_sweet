@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+# Creates the flashable images: boot, dtbo, vbmeta and super (system, vendor, product).
+source "$(dirname "$0")/common.sh"
+need mke2fs mkbootimg lpmake avbtool python3
+
+KOUT=$OUT/kernel/arch/arm64/boot
+
+mkext4() {
+    local name=$1 dir=$2 size
+    size=$(image_size_mb "$dir")
+    log "images: $name.img (${size} MiB)"
+    rm -f "$IMAGES/$name.img"
+    # Read-only partitions: no journal, deterministic timestamps.
+    E2FSPROGS_FAKE_TIME=1700000000 mke2fs -q -t ext4 -b 4096 -L "$name" -O ^has_journal \
+        -E root_owner=0:0 -d "$dir" "$IMAGES/$name.img" "${size}M"
+}
+
+mkext4 system "$SYSTEM_ROOT"
+mkext4 vendor "$VENDOR_ROOT"
+mkext4 product "$PRODUCT_ROOT"
+
+log "images: boot.img"
+mkbootimg \
+    --header_version "$BOOT_HEADER_VERSION" \
+    --kernel "$KOUT/Image.gz" \
+    --ramdisk "$OUT/ramdisk.cpio.gz" \
+    --dtb "$KOUT/dts/$KERNEL_DTB" \
+    --cmdline "$BOOT_CMDLINE" \
+    --base "$BOOT_BASE" \
+    --kernel_offset "$BOOT_KERNEL_OFFSET" \
+    --ramdisk_offset "$BOOT_RAMDISK_OFFSET" \
+    --tags_offset "$BOOT_TAGS_OFFSET" \
+    --dtb_offset "$BOOT_DTB_OFFSET" \
+    --pagesize "$BOOT_PAGESIZE" \
+    --os_version "$BOOT_OS_VERSION" \
+    --os_patch_level "$BOOT_OS_PATCH_LEVEL" \
+    --output "$IMAGES/boot.img"
+
+# The bootloader merges dtbo overlays into the DTB it boots: the stock ones
+# are made for the downstream kernel, so an empty table is flashed instead.
+log "images: dtbo.img (empty)"
+python3 "$DEVICE_DIR/tools/empty_dtbo.py" "$IMAGES/dtbo.img"
+
+log "images: vbmeta.img (verification disabled)"
+avbtool make_vbmeta_image --flags 3 --padding_size 4096 --output "$IMAGES/vbmeta.img"
+
+log "images: super.img"
+args=(--metadata-size "$SUPER_METADATA_SIZE" --super-name super --metadata-slots "$SUPER_METADATA_SLOTS"
+      --device "super:$SUPER_SIZE" --group "$SUPER_GROUP:$SUPER_GROUP_SIZE" --sparse --output "$IMAGES/super.img")
+for p in $SUPER_PARTITIONS; do
+    args+=(--partition "$p:readonly:$(stat -c %s "$IMAGES/$p.img"):$SUPER_GROUP" --image "$p=$IMAGES/$p.img")
+done
+lpmake "${args[@]}" >/dev/null
+
+(cd "$IMAGES" && sha256sum boot.img dtbo.img vbmeta.img super.img > SHA256SUMS)
+log "images: done ($IMAGES)"

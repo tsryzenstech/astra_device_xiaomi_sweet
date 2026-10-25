@@ -1,0 +1,118 @@
+# astraOS for Xiaomi Redmi Note 10 Pro (sweet)
+
+Build system for a flashable [astraOS](../astra) image for the Redmi Note 10
+Pro / Pro Max (`sweet`, `sweetin`, Snapdragon 732G / SM7150).
+
+It produces the usual fastboot images:
+
+| Image | Contents |
+|---|---|
+| `boot.img` | mainline kernel (`sm7150-mainline/linux`), `sm7150-xiaomi-sweet.dtb`, ramdisk with astra first stage init (header v2) |
+| `super.img` | dynamic partitions `system`, `vendor`, `product` (sparse, group `qti_dynamic_partitions`) |
+| `vbmeta.img` | empty vbmeta, verification disabled |
+| `dtbo.img` | empty overlay table (the stock overlays target the downstream kernel) |
+
+> **Status: Developer Preview, not yet booted on hardware.** The build is
+> complete, but expect a bring-up phase (display, touch, GPU firmware) before
+> the first successful boot. Keep a stock/MIUI fastboot ROM at hand to go
+> back.
+
+## Requirements
+
+- An **unlocked bootloader** (Xiaomi unlock tool).
+- To build: an arm64 Linux machine with Docker, or any Linux/WSL2 machine
+  with Docker + `qemu-user-static` (slower), or a root shell for the
+  chroot-based build (see below). GitHub Actions builds it on native arm64
+  runners (`.github/workflows/build.yml`).
+- About 15 GB of free disk space.
+
+## Build
+
+Clone this repository next to the `astra` repository (it is picked up
+automatically; otherwise it is cloned from `ASTRA_REPO`):
+
+```
+GitHub/
+├── astra/
+└── astra_device_xiaomi_sweet/
+```
+
+```bash
+./build.sh --docker
+```
+
+The zip lands in `out/astraOS-<version>-sweet-<date>.zip`.
+
+Steps can be run one at a time: `./build.sh --docker fetch kernel astra rootfs images package`.
+
+### Without Docker (e.g. WSL)
+
+```bash
+sudo apt install qemu-user-static binfmt-support gcc-aarch64-linux-gnu bc bison flex libssl-dev libelf-dev
+sudo scripts/chroot.sh setup                              # Alpine aarch64 build root
+./build.sh fetch
+CROSS_COMPILE=aarch64-linux-gnu- ./build.sh kernel       # fast: cross compiled on the host
+sudo scripts/chroot.sh build astra rootfs images package
+```
+
+## What the build does
+
+1. **fetch** – astraOS, the SM7150 mainline kernel and the device firmware
+   (`sm7150-mainline/firmware-xiaomi-sweet`, non-free, downloaded at build
+   time and never committed here).
+2. **kernel** – `defconfig` + `sm7150.config` + [`kernel/astra.config`](kernel/astra.config)
+   (UFS, device-mapper and ext4 built in for the first stage).
+3. **astra** – builds the astraOS system code natively for aarch64/musl
+   (static `init` for the ramdisk).
+4. **rootfs** – installs the userland libraries (musl, Mesa, Qt 6...) from
+   Alpine packages ([`packages.txt`](packages.txt)) and relocates them into
+   the astraOS layout (`/system/{bin,lib,etc}`, with `/bin`, `/lib`, `/etc`,
+   `/usr` as symlinks), adds astraOS, kernel modules, the vendor partition
+   ([`rootdir/vendor`](rootdir/vendor)) and the ramdisk.
+5. **images** – ext4 images, `boot.img` (stock ABL parameters, see
+   [`board.conf`](board.conf)), `super.img` with `lpmake`, `vbmeta.img`,
+   `dtbo.img`.
+6. **package** – zip with the images and flashing scripts.
+
+## Flash
+
+Boot the phone into fastboot (Volume down + Power), connect it and run from
+the extracted package:
+
+```bash
+./flash-all.sh --wipe      # first install: erases userdata
+./flash-all.sh             # updates, keeps your data
+```
+
+On Windows use `flash-all.bat` (same arguments). The first boot formats
+`/data` as ext4.
+
+To go back to MIUI/HyperOS, flash a stock fastboot ROM with Xiaomi's tool.
+
+## Device notes
+
+| | |
+|---|---|
+| SoC | Qualcomm SM7150-AC (Snapdragon 732G), Adreno 618 |
+| Display | 1080 × 2400 AMOLED (`samsung,ams667yr01`), UI scale 2.75 |
+| Touch | Goodix GT9896 |
+| Partitions | A-only, dynamic partitions in `super` (9126805504 bytes) |
+| Boot image | header v2, base 0x0, page size 4096, `Image.gz` + DTB |
+
+## Layout of this repository
+
+```
+board.conf            device parameters (kernel, boot image, super)
+packages.txt          Alpine packages providing the userland libraries
+kernel/astra.config   kernel configuration fragment
+rootdir/vendor/       vendor partition: fstab, init scripts
+scripts/              build steps
+tools/                small image helpers
+flash/                fastboot flashing scripts shipped in the package
+Dockerfile            build environment (Alpine aarch64)
+```
+
+## License
+
+Build scripts and configuration: [Apache License 2.0](LICENSE). Firmware
+and Alpine packages keep their own licenses.

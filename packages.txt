@@ -1,0 +1,39 @@
+# Alpine Linux packages that provide the userland libraries of astraOS.
+# They are installed into a staging root and then relocated under /system
+# (see scripts/build-rootfs.sh). Lines starting with "?" are optional.
+
+# Base
+musl
+busybox
+ca-certificates
+tzdata
+eudev
+kmod
+e2fsprogs
+f2fs-tools
+
+# Graphics and input
+mesa-dri-gallium
+mesa-egl
+mesa-gbm
+mesa-gles
+libdrm
+libinput
+libxkbcommon
+fontconfig
+libpng
+
+# Qt 6
+qt6-qtbase
+qt6-qtdeclarative
+qt6-qtwayland
+qt6-qtsvg
+qt6-qtmultimedia
+?qt6-qtvirtualkeyboard
+
+# Firmware shared by Qualcomm SoCs (Adreno SQE/GMU, ...)
+linux-firmware-qcom
+?linux-firmware-ath10k
+
+# Qualcomm IPC router tools (remote processors)
+?qrtr
