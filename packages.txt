@@ -29,11 +29,32 @@ qt6-qtdeclarative
 qt6-qtwayland
 qt6-qtsvg
 qt6-qtmultimedia
-?qt6-qtvirtualkeyboard
+qt6-qtwebsockets
+font-noto-emoji
 
-# Firmware shared by Qualcomm SoCs (Adreno SQE/GMU, ...)
+# Firmware shared by Qualcomm SoCs (Adreno SQE/GMU, Wi-Fi WCN3990, Bluetooth)
 linux-firmware-qcom
-?linux-firmware-ath10k
+linux-firmware-ath10k
+linux-firmware-qca
 
-# Qualcomm IPC router tools (remote processors)
+# Connectivity daemons driven by astrad (see core/rootdir/etc/init/connectivity.rc)
+dbus
+iwd
+openresolv
+wireless-regdb
+bluez
+modemmanager
+libqmi
+
+# Qualcomm remote processor helpers: modem file system, protection domains,
+# firmware over QRTR. Needed for the modem and the Wi-Fi/Bluetooth firmware.
 ?qrtr
+?rmtfs
+?pd-mapper
+?tqftpserv
+
+# Audio (volume control through PipeWire, ALSA mixer as fallback)
+pipewire
+wireplumber
+alsa-utils
+?alsa-ucm-conf

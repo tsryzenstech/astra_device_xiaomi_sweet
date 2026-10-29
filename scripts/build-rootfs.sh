@@ -75,6 +75,8 @@ ln -sfn data/var var
 ln -sfn data/media/0 sdcard
 ln -sfn system/bin/init init
 chmod 1777 tmp
+# Resolver configuration is written at runtime (iwd -> openresolv, modem bearers).
+ln -sfn /run/resolv.conf system/etc/resolv.conf
 cd - >/dev/null
 
 # ---- 3. Vendor ---------------------------------------------------------------
