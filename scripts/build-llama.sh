@@ -18,10 +18,10 @@ cmake -S "$src" -B "$build" -G Ninja \
     -DBUILD_SHARED_LIBS=OFF \
     -DGGML_NATIVE=OFF \
     -DGGML_CPU_ARM_ARCH=armv8.2-a+dotprod+fp16 \
-    -DLLAMA_CURL=OFF \
+    -DLLAMA_OPENSSL=OFF \
     -DLLAMA_BUILD_TESTS=OFF \
     -DLLAMA_BUILD_EXAMPLES=OFF \
-    -DLLAMA_BUILD_SERVER=ON
+    -DLLAMA_BUILD_TOOLS=ON \n    -DLLAMA_BUILD_SERVER=ON
 cmake --build "$build" --target llama-server -j "$JOBS"
 mkdir -p "$OUT/astra-install/system/bin"
 install -m 0755 "$build/bin/llama-server" "$OUT/astra-install/system/bin/llama-server"
