@@ -15,10 +15,13 @@ jobs:
         with:
           path: astra_device_xiaomi_sweet
 
+      # A private astra repository needs a token that can read it: add a
+      # fine-grained personal access token as the ASTRA_REPO_TOKEN secret.
       - uses: actions/checkout@v4
         with:
           repository: tsryzenstech/astra
           path: astra
+          token: ${{ secrets.ASTRA_REPO_TOKEN || github.token }}
 
       - name: Build
         working-directory: astra_device_xiaomi_sweet

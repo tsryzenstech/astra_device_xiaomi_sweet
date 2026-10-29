@@ -20,7 +20,8 @@ esac
 sha256sum -c SHA256SUMS >/dev/null 2>&1 || { echo "Image checksums do not match, re-download the package."; exit 1; }
 
 fastboot flash vbmeta --disable-verity --disable-verification vbmeta.img
-fastboot flash dtbo dtbo.img
+# The stock overlays do not fit the mainline device tree: erase them.
+fastboot erase dtbo
 fastboot flash boot boot.img
 fastboot flash super super.img
 

@@ -2,7 +2,7 @@
 bash coreutils findutils diffutils grep sed gawk xz gzip zip cpio git python3 perl curl
 build-base linux-headers cmake samurai pkgconf
 bc bison flex openssl-dev elfutils-dev kmod
-qt6-qtbase-dev qt6-qtdeclarative-dev qt6-qtwayland-dev qt6-qtsvg-dev
+qt6-qtbase-dev qt6-qtbase-private-dev qt6-qtdeclarative-dev qt6-qtwayland-dev qt6-qtsvg-dev
 qt6-qtmultimedia-dev qt6-qtshadertools-dev
 libdrm-dev libpng-dev zlib-dev
 e2fsprogs e2fsprogs-extra android-tools

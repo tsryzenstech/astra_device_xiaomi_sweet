@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
-# Creates the flashable images: boot, dtbo, vbmeta and super (system, vendor, product).
+# Creates the flashable images: boot, vbmeta and super (system, vendor, product).
 source "$(dirname "$0")/common.sh"
 need mke2fs mkbootimg lpmake avbtool python3
 
@@ -37,10 +37,9 @@ mkbootimg \
     --os_patch_level "$BOOT_OS_PATCH_LEVEL" \
     --output "$IMAGES/boot.img"
 
-# The bootloader merges dtbo overlays into the DTB it boots: the stock ones
-# are made for the downstream kernel, so an empty table is flashed instead.
-log "images: dtbo.img (empty)"
-python3 "$DEVICE_DIR/tools/empty_dtbo.py" "$IMAGES/dtbo.img"
+# No dtbo.img: the stock overlays target the downstream kernel, and the
+# bootloader refuses to boot (back to fastboot) when a valid dtbo table has
+# no entry for the board. The flash scripts erase dtbo, which it skips.
 
 log "images: vbmeta.img (verification disabled)"
 avbtool make_vbmeta_image --flags 3 --padding_size 4096 --output "$IMAGES/vbmeta.img"
@@ -53,5 +52,5 @@ for p in $SUPER_PARTITIONS; do
 done
 lpmake "${args[@]}" >/dev/null
 
-(cd "$IMAGES" && sha256sum boot.img dtbo.img vbmeta.img super.img > SHA256SUMS)
+(cd "$IMAGES" && sha256sum boot.img vbmeta.img super.img > SHA256SUMS)
 log "images: done ($IMAGES)"

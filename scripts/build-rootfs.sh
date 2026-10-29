@@ -11,6 +11,7 @@
 #   vendor.img   /vendor/{build.prop,etc/fstab,etc/init,firmware}
 #   product.img  /product/{build.prop,app}
 #   ramdisk      /init (static astra init, first stage) + /first_stage.fstab
+#                + /bin/busybox (static, for the USB rescue shell)
 source "$(dirname "$0")/common.sh"
 need apk cpio gzip
 
@@ -107,8 +108,12 @@ echo "# product customisations for $DEVICE" > "$PRODUCT_ROOT/build.prop"
 # ---- 5. Ramdisk (first stage init) -------------------------------------------
 log "rootfs: building the ramdisk"
 rm -rf "$RAMDISK"
-mkdir -p "$RAMDISK"/{dev,proc,sys,newroot}
+mkdir -p "$RAMDISK"/{dev,proc,sys,newroot,bin}
 cp "$SYSTEM_ROOT/system/bin/init" "$RAMDISK/init"
+# A static busybox lets the first stage offer a rescue shell over USB serial
+# when it cannot boot (see core/init/rescue.c).
+apk_root add --quiet busybox-static || warn "busybox-static not available: no rescue shell"
+[ -x "$STAGE/bin/busybox.static" ] && cp "$STAGE/bin/busybox.static" "$RAMDISK/bin/busybox"
 cp "$DEVICE_DIR/rootdir/vendor/etc/fstab" "$RAMDISK/first_stage.fstab"
 (cd "$RAMDISK" && find . | LC_ALL=C sort | cpio -o -H newc -R 0:0 --quiet | gzip -9n) > "$OUT/ramdisk.cpio.gz"
 

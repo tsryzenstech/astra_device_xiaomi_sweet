@@ -11,7 +11,8 @@ where fastboot >nul 2>nul || (echo fastboot not found ^(install Android platform
 fastboot getvar product 2>&1 | findstr /r /c:"^product: *sweet" >nul || (echo This build is for the Redmi Note 10 Pro ^(sweet^). & exit /b 1)
 
 fastboot flash vbmeta --disable-verity --disable-verification vbmeta.img || exit /b 1
-fastboot flash dtbo dtbo.img || exit /b 1
+rem The stock overlays do not fit the mainline device tree: erase them.
+fastboot erase dtbo || exit /b 1
 fastboot flash boot boot.img || exit /b 1
 fastboot flash super super.img || exit /b 1
 

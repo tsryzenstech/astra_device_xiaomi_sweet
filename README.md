@@ -10,7 +10,11 @@ It produces the usual fastboot images:
 | `boot.img` | mainline kernel (`sm7150-mainline/linux`), `sm7150-xiaomi-sweet.dtb`, ramdisk with astra first stage init (header v2) |
 | `super.img` | dynamic partitions `system`, `vendor`, `product` (sparse, group `qti_dynamic_partitions`) |
 | `vbmeta.img` | empty vbmeta, verification disabled |
-| `dtbo.img` | empty overlay table (the stock overlays target the downstream kernel) |
+
+There is no `dtbo.img`: the flash scripts **erase** the `dtbo` partition.
+The stock overlays target the downstream kernel, and the bootloader goes
+straight back to fastboot when a valid overlay table has no entry for the
+board, which an erased partition avoids.
 
 > **Status: Developer Preview, not yet booted on hardware.** The build is
 > complete, but expect a bring-up phase (display, touch, GPU firmware) before
@@ -70,8 +74,7 @@ sudo scripts/chroot.sh build astra rootfs images package
    `/usr` as symlinks), adds astraOS, kernel modules, the vendor partition
    ([`rootdir/vendor`](rootdir/vendor)) and the ramdisk.
 5. **images** – ext4 images, `boot.img` (stock ABL parameters, see
-   [`board.conf`](board.conf)), `super.img` with `lpmake`, `vbmeta.img`,
-   `dtbo.img`.
+   [`board.conf`](board.conf)), `super.img` with `lpmake`, `vbmeta.img`.
 6. **package** – zip with the images and flashing scripts.
 
 ## Flash
@@ -88,6 +91,18 @@ On Windows use `flash-all.bat` (same arguments). The first boot formats
 `/data` as ext4.
 
 To go back to MIUI/HyperOS, flash a stock fastboot ROM with Xiaomi's tool.
+
+### If it does not boot
+
+- To try a build without flashing `boot`, run `fastboot boot boot.img`
+  (after flashing `super`, `vbmeta` and erasing `dtbo`).
+- Kernel messages are shown on the screen while the phone starts.
+- When astraOS cannot mount its partitions it **stays on screen** with the
+  reason and the end of the kernel log, instead of rebooting. It also opens
+  a rescue shell over USB: a new serial port appears on the computer
+  (`/dev/ttyACM0` on Linux and macOS, a COM port on Windows; any baud rate).
+  Use `dmesg`, `cat /proc/partitions` there, and share the output.
+- The previous boot's kernel log is in `/sys/fs/pstore` on the next boot.
 
 ## Device notes
 
@@ -107,7 +122,6 @@ packages.txt          Alpine packages providing the userland libraries
 kernel/astra.config   kernel configuration fragment
 rootdir/vendor/       vendor partition: fstab, init scripts
 scripts/              build steps
-tools/                small image helpers
 flash/                fastboot flashing scripts shipped in the package
 Dockerfile            build environment (Alpine aarch64)
 ```
