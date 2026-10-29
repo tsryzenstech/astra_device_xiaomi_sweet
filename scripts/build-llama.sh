@@ -5,7 +5,7 @@
 source "$(dirname "$0")/common.sh"
 need cmake ninja git
 
-LLAMA_TAG=${LLAMA_TAG:-b5000}
+LLAMA_TAG=${LLAMA_TAG:-b11418}      # a llama.cpp release tag (github.com/ggml-org/llama.cpp/releases)
 src="$SRC/llama.cpp"
 if [ ! -d "$src/.git" ]; then
     log "llama.cpp: fetching $LLAMA_TAG"
