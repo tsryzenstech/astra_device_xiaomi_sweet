@@ -40,11 +40,10 @@ mkboot() {   # mkboot <file> <cmdline>
 }
 mkboot boot.img "$BOOT_CMDLINE"
 # For bring-up, started with `fastboot boot` (never flashed):
-#  - boot-debug.img keeps the bootloader's framebuffer instead of starting the
-#    MSM display driver, and prints every kernel message on it;
+#  - boot-debug.img prints every kernel message on the screen;
 #  - boot-rescue.img also stops in the first stage with the USB rescue shell,
 #    to read dmesg and the previous boot's log in /sys/fs/pstore.
-DEBUG_CMDLINE="$BOOT_CMDLINE loglevel=7 ignore_loglevel initcall_blacklist=msm_drm_register"
+DEBUG_CMDLINE="$BOOT_CMDLINE loglevel=7 ignore_loglevel"
 mkboot boot-debug.img "$DEBUG_CMDLINE"
 mkboot boot-rescue.img "$DEBUG_CMDLINE astra.rescue"
 

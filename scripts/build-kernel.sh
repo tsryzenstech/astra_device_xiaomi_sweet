@@ -25,6 +25,8 @@ kmake olddefconfig
 for opt in SCSI_UFS_QCOM PHY_QCOM_QMP_UFS BLK_DEV_DM DEVTMPFS EXT4_FS; do
     grep -q "^CONFIG_${opt}=y" "$KOUT/.config" || die "CONFIG_${opt} must be built in (check kernel/astra.config)"
 done
+# simpledrm takes card0 at boot and leaves the MSM display on card1.
+grep -q "^CONFIG_DRM_SIMPLEDRM=y" "$KOUT/.config" && die "CONFIG_DRM_SIMPLEDRM must be off (check kernel/astra.config)"
 
 log "kernel: building"
 kmake Image.gz dtbs modules

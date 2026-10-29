@@ -104,9 +104,8 @@ To go back to MIUI/HyperOS, flash a stock fastboot ROM with Xiaomi's tool.
   Use `dmesg`, `cat /proc/partitions` there, and share the output.
 - The previous boot's kernel log is in `/sys/fs/pstore` on the next boot.
 - **The screen goes dark after the logo, with no text:** start
-  `fastboot boot boot-debug.img`. It keeps the bootloader's framebuffer
-  instead of starting the display driver, and prints every kernel message:
-  a photo of the last lines shows where the boot stops.
+  `fastboot boot boot-debug.img`. It prints every kernel message on the
+  screen: a photo of the last lines shows where the boot stops.
 - **To get a shell:** after a failed boot, hold power + volume down to reach
   fastboot and start `fastboot boot boot-rescue.img`. It stops in the first
   stage with the USB rescue shell; there, `dmesg` and
