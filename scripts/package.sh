@@ -9,7 +9,7 @@ name="astraOS-${version:-dev}-${DEVICE}-$(date -u +%Y%m%d)"
 pkg=$OUT/$name
 rm -rf "$pkg" "$pkg.zip"
 mkdir -p "$pkg"
-cp "$IMAGES"/{boot.img,vbmeta.img,super.img,SHA256SUMS} "$pkg/"
+cp "$IMAGES"/{boot.img,boot-debug.img,boot-rescue.img,vbmeta.img,super.img,SHA256SUMS} "$pkg/"
 cp "$DEVICE_DIR"/flash/* "$pkg/"
 chmod +x "$pkg/flash-all.sh"
 (cd "$OUT" && zip -qr "$name.zip" "$name")

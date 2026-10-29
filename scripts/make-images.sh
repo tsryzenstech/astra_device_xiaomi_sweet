@@ -20,22 +20,33 @@ mkext4 system "$SYSTEM_ROOT"
 mkext4 vendor "$VENDOR_ROOT"
 mkext4 product "$PRODUCT_ROOT"
 
-log "images: boot.img"
-mkbootimg \
-    --header_version "$BOOT_HEADER_VERSION" \
-    --kernel "$KOUT/Image.gz" \
-    --ramdisk "$OUT/ramdisk.cpio.gz" \
-    --dtb "$KOUT/dts/$KERNEL_DTB" \
-    --cmdline "$BOOT_CMDLINE" \
-    --base "$BOOT_BASE" \
-    --kernel_offset "$BOOT_KERNEL_OFFSET" \
-    --ramdisk_offset "$BOOT_RAMDISK_OFFSET" \
-    --tags_offset "$BOOT_TAGS_OFFSET" \
-    --dtb_offset "$BOOT_DTB_OFFSET" \
-    --pagesize "$BOOT_PAGESIZE" \
-    --os_version "$BOOT_OS_VERSION" \
-    --os_patch_level "$BOOT_OS_PATCH_LEVEL" \
-    --output "$IMAGES/boot.img"
+mkboot() {   # mkboot <file> <cmdline>
+    log "images: $1"
+    mkbootimg \
+        --header_version "$BOOT_HEADER_VERSION" \
+        --kernel "$KOUT/Image.gz" \
+        --ramdisk "$OUT/ramdisk.cpio.gz" \
+        --dtb "$KOUT/dts/$KERNEL_DTB" \
+        --cmdline "$2" \
+        --base "$BOOT_BASE" \
+        --kernel_offset "$BOOT_KERNEL_OFFSET" \
+        --ramdisk_offset "$BOOT_RAMDISK_OFFSET" \
+        --tags_offset "$BOOT_TAGS_OFFSET" \
+        --dtb_offset "$BOOT_DTB_OFFSET" \
+        --pagesize "$BOOT_PAGESIZE" \
+        --os_version "$BOOT_OS_VERSION" \
+        --os_patch_level "$BOOT_OS_PATCH_LEVEL" \
+        --output "$IMAGES/$1"
+}
+mkboot boot.img "$BOOT_CMDLINE"
+# For bring-up, started with `fastboot boot` (never flashed):
+#  - boot-debug.img keeps the bootloader's framebuffer instead of starting the
+#    MSM display driver, and prints every kernel message on it;
+#  - boot-rescue.img also stops in the first stage with the USB rescue shell,
+#    to read dmesg and the previous boot's log in /sys/fs/pstore.
+DEBUG_CMDLINE="$BOOT_CMDLINE loglevel=7 ignore_loglevel initcall_blacklist=msm_drm_register"
+mkboot boot-debug.img "$DEBUG_CMDLINE"
+mkboot boot-rescue.img "$DEBUG_CMDLINE astra.rescue"
 
 # No dtbo.img: the stock overlays target the downstream kernel, and the
 # bootloader refuses to boot (back to fastboot) when a valid dtbo table has
@@ -52,5 +63,5 @@ for p in $SUPER_PARTITIONS; do
 done
 lpmake "${args[@]}" >/dev/null
 
-(cd "$IMAGES" && sha256sum boot.img vbmeta.img super.img > SHA256SUMS)
+(cd "$IMAGES" && sha256sum boot.img boot-debug.img boot-rescue.img vbmeta.img super.img > SHA256SUMS)
 log "images: done ($IMAGES)"
