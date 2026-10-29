@@ -42,6 +42,7 @@ dbus
 iwd
 openresolv
 nftables
+acl
 wireless-regdb
 bluez
 modemmanager

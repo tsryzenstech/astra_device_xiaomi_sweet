@@ -92,6 +92,7 @@ ro.product.brand=$DEVICE_BRAND
 ro.product.manufacturer=$DEVICE_MANUFACTURER
 ro.board.platform=$SOC
 ro.astra.ui.scale=$UI_SCALE
+ro.astra.motion_blur=${MOTION_BLUR:-true}
 ro.kernel.release=$(kernel_release)
 EOF
 mkdir -p "$VENDOR_ROOT/firmware"

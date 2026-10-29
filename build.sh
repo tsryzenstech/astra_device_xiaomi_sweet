@@ -6,7 +6,7 @@
 #   ./build.sh [step...]            run inside the build environment
 #   ./build.sh --docker [step...]   run the steps inside the Docker build image
 #
-# Steps (default: all): fetch kernel astra rootfs images package
+# Steps (default: all): fetch kernel astra llama rootfs images package
 # Other: clean (removes out/), distclean (also removes cache/)
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -33,10 +33,11 @@ run() { bash "scripts/$1.sh"; }
 for step in "${steps[@]}"; do
     case "$step" in
         all)
-            for s in fetch build-kernel build-astra build-rootfs make-images package; do run "$s"; done ;;
+            for s in fetch build-kernel build-astra build-llama build-rootfs make-images package; do run "$s"; done ;;
         fetch) run fetch ;;
         kernel) run build-kernel ;;
         astra) run build-astra ;;
+        llama) run build-llama ;;
         rootfs) run build-rootfs ;;
         images) run make-images ;;
         package) run package ;;
