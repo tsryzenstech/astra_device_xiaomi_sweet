@@ -30,7 +30,7 @@ qt6-qtwayland
 qt6-qtsvg
 qt6-qtmultimedia
 qt6-qtwebsockets
-font-noto-emoji
+qt6-qtwebengine
 
 # Firmware shared by Qualcomm SoCs (Adreno SQE/GMU, Wi-Fi WCN3990, Bluetooth)
 linux-firmware-qcom
@@ -41,6 +41,7 @@ linux-firmware-qca
 dbus
 iwd
 openresolv
+nftables
 wireless-regdb
 bluez
 modemmanager
