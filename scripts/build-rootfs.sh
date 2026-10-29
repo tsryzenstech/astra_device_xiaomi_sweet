@@ -55,8 +55,12 @@ cp -a "$STAGE/etc/." "$SYSTEM_ROOT/system/etc/"
 # No package manager on the device: the system partition is read-only.
 rm -rf "$SYSTEM_ROOT/system/lib/apk" "$SYSTEM_ROOT/system/etc/apk" "$SYSTEM_ROOT/system/share/apk"
 
-# astraOS itself (overrides passwd, group, fonts.conf...)
-cp -a "$OUT/astra-install/." "$SYSTEM_ROOT/"
+# astraOS itself (overrides passwd, group, fonts.conf...). Replace what is
+# there instead of writing into it: Alpine's /sbin/init is a link to
+# /bin/busybox, and copying through it left /system/bin/init pointing at
+# BusyBox (and overwrote the build machine's busybox).
+cp -a --remove-destination "$OUT/astra-install/." "$SYSTEM_ROOT/"
+[ -L "$SYSTEM_ROOT/system/bin/init" ] && die "/system/bin/init is a link, not astraOS init"
 
 # Kernel modules
 mkdir -p "$SYSTEM_ROOT/system/lib/modules"
@@ -112,7 +116,7 @@ echo "# product customisations for $DEVICE" > "$PRODUCT_ROOT/build.prop"
 log "rootfs: building the ramdisk"
 rm -rf "$RAMDISK"
 mkdir -p "$RAMDISK"/{dev,proc,sys,newroot,bin}
-cp "$SYSTEM_ROOT/system/bin/init" "$RAMDISK/init"
+cp "$OUT/astra-install/system/bin/init" "$RAMDISK/init"
 # A static busybox lets the first stage offer a rescue shell over USB serial
 # when it cannot boot (see core/init/rescue.c).
 apk_root add --quiet busybox-static || warn "busybox-static not available: no rescue shell"

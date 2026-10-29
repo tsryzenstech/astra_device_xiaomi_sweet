@@ -46,6 +46,13 @@ enter() {
     astra=${ASTRA_SRC:-$DEVICE_DIR/../astra}
     [ -d "$astra/core/init" ] && { mountpoint -q "$ROOT/work/astra" || mount --bind "$astra" "$ROOT/work/astra"; }
     trap 'umount -R "$ROOT/work/device" "$ROOT/work/astra" "$ROOT/proc" "$ROOT/sys" "$ROOT/dev" 2>/dev/null || true' EXIT
+    # Older builds copied astraOS init over the chroot's /bin/busybox (and
+    # so /bin/sh): put busybox back.
+    if ! "$ROOT/bin/busybox" --help 2>&1 | grep -q BusyBox; then
+        echo "chroot: repairing /bin/busybox"
+        chroot "$ROOT" /sbin/apk fix --reinstall busybox >/dev/null 2>&1 || true
+        "$ROOT/bin/busybox" --help 2>&1 | grep -q BusyBox || echo "chroot: could not repair busybox, run: sudo scripts/chroot.sh setup" >&2
+    fi
     chroot "$ROOT" /usr/bin/env -i HOME=/root PATH=/usr/sbin:/usr/bin:/sbin:/bin TERM="${TERM:-xterm}" \
         ASTRA_SRC=$( [ -d "$ROOT/work/astra/core" ] && echo /work/astra ) JOBS="${JOBS:-$(nproc)}" "$@"
 }
