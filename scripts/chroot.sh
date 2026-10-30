@@ -18,8 +18,23 @@ ROOT=$DEVICE_DIR/cache/chroot
 
 [ "$(id -u)" = 0 ] || { echo "run as root" >&2; exit 1; }
 
+# Mounts inside the chroot, deepest first.
+chroot_mounts() {
+    awk -v root="$ROOT/" 'index($2, root) == 1 { print $2 }' /proc/mounts | sort -r
+}
+
 unmount() {
-    umount -R "$ROOT/work/device" "$ROOT/work/astra" "$ROOT/proc" "$ROOT/sys" "$ROOT/dev" 2>/dev/null || true
+    local m
+    # Slaves first: unmounting the chroot's copies of /dev, /proc and /sys
+    # must not propagate to the real ones.
+    for m in proc sys dev; do
+        mountpoint -q "$ROOT/$m" && mount --make-rslave "$ROOT/$m" 2>/dev/null
+    done
+    # Everything left inside the chroot (also from earlier, interrupted
+    # builds); lazily, so a busy one does not stay behind.
+    chroot_mounts | while read -r m; do
+        umount -l "$m" 2>/dev/null || true
+    done
 }
 
 # The chroot exists and runs the Alpine release of ALPINE_BRANCH.
@@ -33,8 +48,9 @@ setup() {
         echo "chroot: replacing $ROOT (Alpine $(cat "$ROOT/etc/alpine-release" 2>/dev/null || echo ?), building needs $ALPINE_BRANCH)"
         unmount
         # Never delete through a mount that is still there.
-        if grep -q " $ROOT/" /proc/mounts; then
-            echo "chroot: $ROOT still has mounts, unmount them first" >&2
+        if [ -n "$(chroot_mounts)" ]; then
+            echo "chroot: these mounts inside $ROOT could not be removed:" >&2
+            chroot_mounts >&2
             exit 1
         fi
         rm -rf "$ROOT"
@@ -60,7 +76,7 @@ enter() {
     local astra
     mkdir -p "$ROOT/work/device" "$ROOT/work/astra"
     for fs in proc sys dev; do
-        mountpoint -q "$ROOT/$fs" || mount --rbind "/$fs" "$ROOT/$fs"
+        mountpoint -q "$ROOT/$fs" || { mount --rbind "/$fs" "$ROOT/$fs" && mount --make-rslave "$ROOT/$fs"; }
     done
     mountpoint -q "$ROOT/work/device" || mount --bind "$DEVICE_DIR" "$ROOT/work/device"
     astra=${ASTRA_SRC:-$DEVICE_DIR/../astra}
