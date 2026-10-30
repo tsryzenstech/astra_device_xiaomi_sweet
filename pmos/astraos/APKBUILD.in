@@ -23,7 +23,10 @@ source="
 builddir="$srcdir"
 
 package() {
+	mkdir -p "$pkgdir"
 	cp -a "$srcdir"/tree/. "$pkgdir"/
+	# Unpacked as the build user: the files belong to root on the phone.
+	chown -R 0:0 "$pkgdir"
 
 	install -Dm755 "$srcdir"/astraos.initd "$pkgdir"/etc/init.d/astraos
 	install -Dm644 "$srcdir"/astraos.confd "$pkgdir"/etc/conf.d/astraos
