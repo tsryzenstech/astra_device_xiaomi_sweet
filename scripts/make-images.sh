@@ -49,7 +49,7 @@ mkboot boot.img "$BOOT_CMDLINE"
 #  - boot-debug.img prints every kernel message on the screen;
 #  - boot-rescue.img also stops in the first stage with the USB rescue shell,
 #    to read dmesg and the previous boot's log in /sys/fs/pstore.
-DEBUG_CMDLINE="$BOOT_CMDLINE loglevel=7 ignore_loglevel"
+DEBUG_CMDLINE="${BOOT_CMDLINE/console=null/console=tty0} ignore_loglevel"
 mkboot boot-debug.img "$DEBUG_CMDLINE"
 mkboot boot-rescue.img "$DEBUG_CMDLINE astra.rescue"
 
