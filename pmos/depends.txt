@@ -1,0 +1,45 @@
+# Packages astraOS needs on top of postmarketOS (dependencies of the astraos
+# package). The kernel, firmware, initramfs, udev, BusyBox and the Qualcomm
+# helpers (rmtfs, pd-mapper, tqftpserv) come with postmarketOS's device
+# support for SM7150 phones; OpenRC services of the daemons are pulled in
+# automatically (*-openrc).
+
+# Graphics and input
+mesa-dri-gallium
+mesa-egl
+mesa-gbm
+mesa-gles
+libdrm
+libinput
+libxkbcommon
+fontconfig
+libpng
+
+# Qt 6
+qt6-qtbase
+qt6-qtdeclarative
+qt6-qtwayland
+qt6-qtsvg
+qt6-qtmultimedia
+qt6-qtwebsockets
+qt6-qtwebengine
+
+# Connectivity daemons driven by astrad
+dbus
+iwd
+openresolv
+nftables
+acl
+wireless-regdb
+bluez
+modemmanager
+libqmi
+
+# Audio, storage, time
+pipewire
+wireplumber
+alsa-utils
+e2fsprogs
+f2fs-tools
+tzdata
+ca-certificates

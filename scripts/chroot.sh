@@ -3,13 +3,14 @@
 #
 # Runs build steps inside an Alpine aarch64 chroot, for hosts without Docker
 # (e.g. WSL). Needs root; on non-arm64 hosts also qemu-user-static + binfmt.
+# build.sh calls it for the Alpine steps (fetch uboot astra llama).
 #
-#   sudo scripts/chroot.sh setup              create cache/chroot
+#   sudo scripts/chroot.sh setup              create cache/chroot (again)
 #   sudo scripts/chroot.sh build [steps...]   run ./build.sh inside it
 #   sudo scripts/chroot.sh shell              interactive shell
 #
-# Tip: the kernel builds much faster cross-compiled on the host:
-#   CROSS_COMPILE=aarch64-linux-gnu- ./build.sh kernel
+# The chroot follows ALPINE_BRANCH (the Alpine release postmarketOS is
+# based on): one of another release is made again.
 set -euo pipefail
 DEVICE_DIR=$(cd "$(dirname "$0")/.." && pwd)
 source "$DEVICE_DIR/board.conf"
@@ -17,8 +18,27 @@ ROOT=$DEVICE_DIR/cache/chroot
 
 [ "$(id -u)" = 0 ] || { echo "run as root" >&2; exit 1; }
 
+unmount() {
+    umount -R "$ROOT/work/device" "$ROOT/work/astra" "$ROOT/proc" "$ROOT/sys" "$ROOT/dev" 2>/dev/null || true
+}
+
+# The chroot exists and runs the Alpine release of ALPINE_BRANCH.
+current() {
+    [ -f "$ROOT/etc/alpine-release" ] && [ "$(cut -d. -f1,2 "$ROOT/etc/alpine-release")" = "${ALPINE_BRANCH#v}" ]
+}
+
 setup() {
     local arch mirror tmp index apk
+    if [ -d "$ROOT" ]; then
+        echo "chroot: replacing $ROOT (Alpine $(cat "$ROOT/etc/alpine-release" 2>/dev/null || echo ?), building needs $ALPINE_BRANCH)"
+        unmount
+        # Never delete through a mount that is still there.
+        if grep -q " $ROOT/" /proc/mounts; then
+            echo "chroot: $ROOT still has mounts, unmount them first" >&2
+            exit 1
+        fi
+        rm -rf "$ROOT"
+    fi
     arch=$(uname -m)
     mirror="$ALPINE_MIRROR/$ALPINE_BRANCH"
     tmp=$(mktemp -d)
@@ -45,7 +65,9 @@ enter() {
     mountpoint -q "$ROOT/work/device" || mount --bind "$DEVICE_DIR" "$ROOT/work/device"
     astra=${ASTRA_SRC:-$DEVICE_DIR/../astra}
     [ -d "$astra/core/init" ] && { mountpoint -q "$ROOT/work/astra" || mount --bind "$astra" "$ROOT/work/astra"; }
-    trap 'umount -R "$ROOT/work/device" "$ROOT/work/astra" "$ROOT/proc" "$ROOT/sys" "$ROOT/dev" 2>/dev/null || true' EXIT
+    # Unmount, and give the build output back to the user who ran sudo
+    # (the pmos and package steps run as that user).
+    trap 'unmount; [ -n "${SUDO_UID:-}" ] && chown -R "$SUDO_UID:${SUDO_GID:-$SUDO_UID}" "$DEVICE_DIR/out" "$DEVICE_DIR/cache/src" 2>/dev/null; true' EXIT
     # Older builds copied astraOS init over the chroot's /bin/busybox (and
     # so /bin/sh): put busybox back.
     if ! chroot "$ROOT" /bin/busybox --help 2>&1 | grep -q BusyBox; then
@@ -62,7 +84,7 @@ enter() {
 
 case "${1:-}" in
     setup) setup ;;
-    build) shift; enter /bin/bash -c "cd /work/device && ./build.sh $*" ;;
+    build) shift; current || setup; enter /bin/bash -c "cd /work/device && ./build.sh $*" ;;
     shell) enter /bin/bash -l ;;
     *) sed -n '3,14p' "$0"; exit 2 ;;
 esac

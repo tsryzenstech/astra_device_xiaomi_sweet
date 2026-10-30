@@ -1,0 +1,4 @@
+# astraOS .rc files the supervisor runs. Connectivity daemons are not
+# among them: on postmarketOS they are OpenRC services (iwd, bluetooth,
+# modemmanager, rmtfs, pd-mapper, tqftpserv).
+ASTRA_RC="/system/etc/init/init.rc /system/etc/init/astrad.rc /system/etc/init/sysboard.rc /system/etc/init/adud.rc /vendor/etc/init"

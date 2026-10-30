@@ -8,7 +8,7 @@ on:
 
 jobs:
   sweet:
-    # Native arm64: the whole build (kernel, Qt apps, images) runs without emulation.
+    # Native arm64: astraOS, U-Boot and postmarketOS's chroots run without emulation.
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
@@ -23,9 +23,18 @@ jobs:
           path: astra
           token: ${{ secrets.ASTRA_REPO_TOKEN || github.token }}
 
-      - name: Build
+      # astraOS and U-Boot in the Alpine image, then postmarketOS with
+      # pmbootstrap on the runner (it needs sudo, kpartx and losetup).
+      - name: Build astraOS and U-Boot
         working-directory: astra_device_xiaomi_sweet
-        run: ./build.sh --docker all
+        run: ./build.sh --docker fetch uboot astra llama
+
+      - name: Install pmbootstrap's requirements
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends kpartx zip
+
+      - name: Build the postmarketOS image and the package
+        working-directory: astra_device_xiaomi_sweet
+        run: ./build.sh pmos package
 
       - uses: actions/upload-artifact@v4
         with:

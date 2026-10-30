@@ -21,9 +21,4 @@ cmake --build "$BUILD" -j "$JOBS"
 rm -rf "$OUT/astra-install"
 DESTDIR="$OUT/astra-install" cmake --install "$BUILD" --prefix / >/dev/null
 
-# The ramdisk runs init before any library is reachable.
-init="$OUT/astra-install/system/bin/init"
-if readelf -l "$init" 2>/dev/null | grep -q "Requesting program interpreter"; then
-    die "init is dynamically linked; it must be static for the ramdisk"
-fi
 log "astra: installed to $OUT/astra-install"

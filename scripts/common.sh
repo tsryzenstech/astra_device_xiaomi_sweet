@@ -10,15 +10,9 @@ source "$DEVICE_DIR/board.conf"
 OUT=${OUT:-$DEVICE_DIR/out}
 CACHE=${CACHE:-$DEVICE_DIR/cache}
 SRC=$CACHE/src
-STAGE=$OUT/stage            # Alpine packages as installed by apk
-SYSTEM_ROOT=$OUT/system     # contents of system.img (system-as-root)
-VENDOR_ROOT=$OUT/vendor     # contents of vendor.img
-PRODUCT_ROOT=$OUT/product   # contents of product.img
-RAMDISK=$OUT/ramdisk
-IMAGES=$OUT/images
 JOBS=${JOBS:-$(nproc)}
 
-mkdir -p "$OUT" "$CACHE" "$SRC" "$IMAGES"
+mkdir -p "$OUT" "$CACHE" "$SRC" 2>/dev/null || true
 
 log() { printf '\033[1;35m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33mwarning:\033[0m %s\n' "$*" >&2; }
@@ -26,7 +20,7 @@ die() { printf '\033[1;31merror:\033[0m %s\n' "$*" >&2; exit 1; }
 
 need() {
     for tool in "$@"; do
-        command -v "$tool" >/dev/null 2>&1 || die "missing tool: $tool (run inside the build container, see README)"
+        command -v "$tool" >/dev/null 2>&1 || die "missing tool: $tool (see README, Building)"
     done
 }
 
@@ -52,13 +46,7 @@ astra_source() {
     fi
 }
 
-kernel_release() {
-    cat "$OUT/kernel/include/config/kernel.release"
-}
-
-# Size in MiB of a directory plus headroom, rounded up to 4 MiB.
-image_size_mb() {
-    local kb
-    kb=$(du -sk "$1" | cut -f1)
-    echo $(( (kb / 1024 + IMAGE_HEADROOM_MB + kb / 1024 / 8 + 3) / 4 * 4 ))
+# True inside the Alpine aarch64 build environment (Docker image or chroot).
+in_build_env() {
+    [ -f /etc/alpine-release ] && [ "$(uname -m)" = aarch64 ]
 }

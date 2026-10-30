@@ -1,0 +1,31 @@
+#!/sbin/openrc-run
+# SPDX-License-Identifier: Apache-2.0
+# astraOS on postmarketOS: astraOS's init runs as a service supervisor
+# (init --supervisor) and starts astrad and SysBoard from their .rc files.
+# postmarketOS's own init (OpenRC) keeps the kernel, devices, mounts, D-Bus,
+# Wi-Fi, Bluetooth and the modem.
+
+name="astraOS"
+description="astraOS system services and SysBoard"
+
+command="/system/bin/init"
+command_args="--supervisor $ASTRA_RC"
+command_background="yes"
+pidfile="/run/astraos.pid"
+output_log="/var/log/astraos.log"
+error_log="/var/log/astraos.log"
+retry="TERM/10/KILL/2"
+
+# Only localmount is required: a missing optional service must not keep the
+# phone from showing astraOS.
+depend() {
+	need localmount
+	want dbus udev-settle iwd bluetooth modemmanager
+	after udev udev-settle rmtfs pd-mapper tqftpserv
+}
+
+start_pre() {
+	checkpath -d -m 0755 /dev/socket
+	checkpath -d -m 0771 /data
+	export TZ="${TZ:-UTC}"
+}

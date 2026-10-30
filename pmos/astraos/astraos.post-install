@@ -1,0 +1,32 @@
+#!/bin/sh
+# astraOS on postmarketOS: users and groups with astraOS's IDs, the system
+# tools astraOS calls by /system/bin path, and the services it needs.
+
+# astraOS's IDs (core/init/util.c). Names Alpine already uses (input, audio,
+# video...) get an astra- prefix: astraOS refers to them by number.
+has_gid() { grep -q "^[^:]*:[^:]*:$1:" /etc/group; }
+has_group() { grep -q "^$1:" /etc/group; }
+for g in system:1000 radio:1001 bluetooth:1002 graphics:1003 input:1004 audio:1005 \
+         camera:1006 log:1007 wifi:1010 media:1013 media_rw:1023 video:1040 \
+         shell:2000 inet:3003 net_admin:3005; do
+	name=${g%:*} gid=${g#*:}
+	has_gid "$gid" && continue
+	has_group "$name" && name="astra-$name"
+	addgroup -S -g "$gid" "$name" 2>/dev/null || true
+done
+grep -q "^[^:]*:[^:]*:1000:" /etc/passwd ||
+	adduser -S -D -H -h /data/system -s /sbin/nologin -u 1000 -G system system 2>/dev/null || true
+
+# Tools astraOS runs as /system/bin/<name>.
+for tool in sh udevadm mke2fs mkfs.f2fs; do
+	path=$(command -v "$tool" 2>/dev/null) || continue
+	[ -e "/system/bin/$tool" ] || ln -s "$path" "/system/bin/$tool"
+done
+
+# No login prompts on the screen: SysBoard owns the display.
+[ -f /etc/inittab ] && sed -i 's/^\(tty[0-9]*::respawn:\)/#\1/' /etc/inittab
+
+for svc in dbus iwd bluetooth modemmanager astraos; do
+	[ -e "/etc/init.d/$svc" ] && rc-update add "$svc" default >/dev/null 2>&1
+done
+exit 0

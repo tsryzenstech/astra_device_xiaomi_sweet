@@ -1,37 +1,50 @@
 # astraOS for Xiaomi Redmi Note 10 Pro (sweet)
 
-Build system for a flashable [astraOS](../astra) image for the Redmi Note 10
-Pro / Pro Max (`sweet`, `sweetin`, Snapdragon 732G / SM7150).
+Build system for a flashable [astraOS](https://github.com/tsryzenstech/astra)
+for the Redmi Note 10 Pro / Pro Max (`sweet`, `sweetin`, Snapdragon 732G /
+SM7150).
 
-It produces the usual fastboot images:
+**astraOS on this phone is built on [postmarketOS](https://nura.eco)**
+(renamed **Nura** in 2026). The kernel, initramfs, firmware, device support,
+base system and init (OpenRC) are postmarketOS's, installed with
+`pmbootstrap` the same way postmarketOS installs itself on SM7150 phones.
+astraOS (astrad, SysBoard, the apps) runs on top as a postmarketOS package,
+`astraos`, the way postmarketOS runs Phosh or Plasma Mobile.
 
-| Image | Contents |
-|---|---|
-| `u-boot.img` | [astraOS's U-Boot](https://github.com/tsryzenstech/u-boot/tree/astra) (sm7150-mainline's, silent, without logos), flashed to `boot` |
-| `userdata.img` | start of `userdata`: GPT (4096 byte sectors) with the EFI partition `astra_esp` holding `\EFI\BOOT\BOOTAA64.EFI`, a unified kernel image (kernel, ramdisk, command line) |
-| `boot.img` | the same kernel and ramdisk for the stock bootloader (header v2), used with `--stock-boot` |
-| `boot-debug.img`, `boot-rescue.img` | for `fastboot boot` only: every kernel message on screen / USB rescue mode with a logs drive |
-| `super.img` | dynamic partitions `system`, `vendor`, `product` (sparse, group `qti_dynamic_partitions`) |
-| `vbmeta.img` | empty vbmeta, verification disabled |
+| Image | Flashed to | Contents |
+|---|---|---|
+| `u-boot.img` | `boot` | [astraOS's U-Boot](https://github.com/tsryzenstech/u-boot/tree/astra): sm7150-mainline's U-Boot, as postmarketOS uses on this phone, but silent and without logos |
+| `userdata.img` | `userdata` | postmarketOS for `qcom-sm7150` (boot partition with systemd-boot, kernel and initramfs; root partition) with the `astraos` package |
+| `vbmeta.img` | `vbmeta` | empty, verification disabled |
 
-There is no `dtbo.img`: the flash scripts **erase** the `dtbo` partition.
-The stock overlays target the downstream kernel, and the bootloader goes
-straight back to fastboot when a valid overlay table has no entry for the
-board, which an erased partition avoids.
+The flash scripts also **erase** `dtbo`: the stock overlays target the
+downstream kernel, and the bootloader goes straight back to fastboot when an
+overlay table has no entry for the board.
 
-> **Status: Developer Preview, not yet booted on hardware.** The build is
-> complete, but expect a bring-up phase (display, touch, GPU firmware) before
-> the first successful boot. Keep a stock/MIUI fastboot ROM at hand to go
-> back.
+## Credits
+
+astraOS on this phone exists thanks to the **postmarketOS (Nura) team and
+community**: their kernel for SM7150 phones (`linux-postmarketos-qcom-sm7150`),
+device support (`device-qcom-sm7150`, `firmware-xiaomi-sweet`), initramfs
+(`postmarketos-mkinitfs`), `boot-deploy`, `pmbootstrap` and the rest of the
+base system. Thanks as well to the [sm7150-mainline](https://github.com/sm7150-mainline)
+contributors (mainline Linux, U-Boot and firmware for these phones), and to
+[Alpine Linux](https://alpinelinux.org), which postmarketOS is built on.
+
+- postmarketOS / Nura: https://nura.eco
+- pmaports (packages and device support): https://gitlab.nura.eco/nura/pmaports
+- pmbootstrap: https://gitlab.nura.eco/nura/pmbootstrap
 
 ## Requirements
 
 - An **unlocked bootloader** (Xiaomi unlock tool).
-- To build: an arm64 Linux machine with Docker, or any Linux/WSL2 machine
-  with Docker + `qemu-user-static` (slower), or a root shell for the
-  chroot-based build (see below). GitHub Actions builds it on native arm64
-  runners (`.github/workflows/build.yml`).
-- About 15 GB of free disk space.
+- To build: Linux or WSL2 with `sudo`, `git`, `python3`, `openssl`, `zip`,
+  `kpartx`, `losetup`; on x86_64 also `qemu-user-static` + `binfmt-support`
+  (the astraOS steps run in an Alpine aarch64 chroot). Docker can replace
+  the chroot (`--docker`). GitHub Actions builds it on native arm64 runners
+  (`.github/workflows/build.yml`).
+- About 20 GB of free disk space, on a Linux filesystem (in WSL: not
+  `/mnt/c`).
 
 ## Build
 
@@ -39,67 +52,63 @@ Clone this repository next to the `astra` repository (it is picked up
 automatically; otherwise it is cloned from `ASTRA_REPO`):
 
 ```
-GitHub/
+astraos/
 ├── astra/
 └── astra_device_xiaomi_sweet/
 ```
 
-```bash
-./build.sh --docker
-```
-
-The zip lands in `out/astraOS-<version>-sweet-<date>.zip`.
-
-Steps can be run one at a time: `./build.sh --docker fetch kernel uboot astra rootfs images package`.
-
-### Without Docker (e.g. WSL)
+Run as your user (it asks for `sudo` when needed):
 
 ```bash
-sudo apt install qemu-user-static binfmt-support gcc-aarch64-linux-gnu bc bison flex libssl-dev libelf-dev
-sudo scripts/chroot.sh setup                              # Alpine aarch64 build root
-./build.sh fetch
-CROSS_COMPILE=aarch64-linux-gnu- ./build.sh kernel       # fast: cross compiled on the host
-sudo scripts/chroot.sh build uboot astra rootfs images package
+./build.sh
 ```
+
+The zip lands in `out/astraOS-<version>-sweet.zip`. Steps can be run one at
+a time: `./build.sh fetch uboot astra llama pmos package`.
 
 ## What the build does
 
-1. **fetch** – astraOS and the device firmware
-   (`sm7150-mainline/firmware-xiaomi-sweet`, non-free, downloaded at build
-   time and never committed here).
-2. **kernel** – by default the prebuilt kernel postmarketOS ships for SM7150
-   phones (`linux-postmarketos-qcom-sm7150`, sm7150-mainline 7.1-rc3, the one
-   known to boot sweet with its display): downloaded from the postmarketOS
-   mirror, checked against `PMOS_KERNEL_SHA256`, and unpacked (image, device
-   tree, modules). `KERNEL_SOURCE=source` builds sm7150-mainline instead, from
-   `defconfig` + `sm7150.config` + [`kernel/astra.config`](kernel/astra.config).
-   Either way the uncompressed kernel must stay under 31 MB: the bootloader
-   puts the device tree right after that and a bigger kernel overwrites it.
-3. **astra** – builds the astraOS system code natively for aarch64/musl
-   (static `init` for the ramdisk).
-4. **rootfs** – installs the userland libraries (musl, Mesa, Qt 6...) from
-   Alpine packages ([`packages.txt`](packages.txt)) and relocates them into
-   the astraOS layout (`/system/{bin,lib,etc}`, with `/bin`, `/lib`, `/etc`,
-   `/usr` as symlinks), adds astraOS, kernel modules, the vendor partition
-   ([`rootdir/vendor`](rootdir/vendor)) and the ramdisk.
-5. **uboot** – clones [tsryzenstech/u-boot](https://github.com/tsryzenstech/u-boot/tree/astra) (branch `astra`)
-   (`UBOOT_REPO`, branch `UBOOT_REF`), builds it with `astra.config` for
-   `sm7150-xiaomi-sweet` and wraps it for the stock bootloader (`u-boot.img`).
-6. **images** – ext4 images, `userdata.img` (EFI partition with the unified
-   kernel image, made with `ukify`), `boot.img` (stock ABL parameters, see
-   [`board.conf`](board.conf)), `super.img` with `lpmake`, `vbmeta.img`.
-7. **package** – zip with the images, `u-boot.img` and the flashing scripts.
+1. **fetch** – the astraOS sources.
+2. **uboot** – [tsryzenstech/u-boot](https://github.com/tsryzenstech/u-boot/tree/astra)
+   (branch `astra`) built with `astra.config` for `sm7150-xiaomi-sweet`, wrapped
+   for the stock bootloader (`u-boot.img`).
+3. **astra** – astraOS for aarch64/musl, against Alpine `v3.24`, the release
+   postmarketOS `v26.06` is based on, so astraOS uses the same Qt 6 and Mesa
+   the phone runs.
+4. **llama** – llama.cpp's server for Cloudy, the on-device assistant.
+5. **pmos** – with [pmbootstrap](https://gitlab.nura.eco/nura/pmbootstrap)
+   (`PMB_REF`): postmarketOS `PMOS_CHANNEL` for `qcom-sm7150`, UI `none`,
+   OpenRC, no SSH server, plus the `astraos` package
+   ([`pmos/astraos`](pmos/astraos)): astraOS's `/system` tree, `/vendor`
+   ([`rootdir/vendor`](rootdir/vendor)), the OpenRC service, udev rules and
+   kernel command line, with the dependencies in
+   [`pmos/depends.txt`](pmos/depends.txt). pmbootstrap keeps its files in
+   `~/.local/share/astra-pmbootstrap` (`PMB_HOME`).
+6. **package** – zip with the images and the flashing scripts.
+
+Steps 1–4 run in the Alpine aarch64 chroot of
+[`scripts/chroot.sh`](scripts/chroot.sh) (made, or made again for a new
+Alpine release, automatically) or in Docker with `--docker`; 5–6 run as your
+user, since pmbootstrap refuses to run as root.
 
 ### How the phone boots
 
-The stock bootloader starts **U-Boot** from `boot`. U-Boot maps `userdata`
-as a disk (its first 128 MiB are `userdata.img`) and starts the EFI
-application of its EFI partition: astraOS's kernel with the ramdisk and the
-command line. astraOS's first stage init maps the dynamic partitions of
-`super`, and maps the rest of `userdata` (after the first 128 MiB) as
-`/data`. This is how postmarketOS boots SM7150 phones. U-Boot shows nothing:
-hold **Volume Down** while the phone starts for its boot menu (also shown
-when a boot fails).
+The stock bootloader starts **U-Boot** from `boot`. U-Boot shows nothing: it
+maps `userdata` as a disk and starts postmarketOS's systemd-boot from the boot
+partition of `userdata.img`, which starts postmarketOS's kernel and
+initramfs. On the first boot the initramfs grows the root partition to the
+whole of `userdata`.
+
+postmarketOS's init (OpenRC) then starts its services (udev, D-Bus, iwd,
+BlueZ, ModemManager, the Qualcomm modem helpers) and `astraos`: astraOS's
+init as a service supervisor (`init --supervisor`), which starts astrad and
+SysBoard. SysBoard shows the boot logo while the shell loads.
+
+The boot is quiet: `console=null quiet loglevel=3` (`KERNEL_CMDLINE` in
+[`board.conf`](board.conf)) is added to postmarketOS's command line, and no
+login prompt is shown. Hold **Volume Down** while the phone starts for
+U-Boot's boot menu (also shown when a boot fails), which can show the last
+boot's kernel log.
 
 ## Flash
 
@@ -107,62 +116,46 @@ Boot the phone into fastboot (Volume down + Power), connect it and run from
 the extracted package:
 
 ```bash
-./flash-all.sh --wipe      # first install: erases userdata
-./flash-all.sh             # updates, keeps your data
+./flash-all.sh
 ```
 
-On Windows use `flash-all.bat` (same arguments). They flash `u-boot.img` to
-`boot`, `super.img`, and `userdata.img` to the start of `userdata`; with
-`--wipe`, `userdata-wipe.img` instead, which also clears where `/data`
-starts, and the first boot formats `/data` as ext4. (The whole of `userdata`
-is never erased: on this UFS it takes longer than fastboot waits over USB.) `--stock-boot` flashes `boot.img`
-instead, started by the stock bootloader without U-Boot.
+On Windows use `flash-all.bat`. They flash `vbmeta.img`, erase `dtbo`, flash
+`u-boot.img` to `boot` and `userdata.img` to `userdata`. **This erases
+everything on the phone**: as on postmarketOS, the system and your data
+live together in `userdata`.
 
 To go back to MIUI/HyperOS, flash a stock fastboot ROM with Xiaomi's tool.
 
 ### If it does not boot
 
-- To try a build without flashing `boot`, run `fastboot boot boot.img`
-  (after flashing `super`, `vbmeta` and erasing `dtbo`).
-- Kernel messages are shown on the screen while the phone starts.
-- When astraOS cannot mount its partitions it **stays on screen** with the
-  reason and the end of the kernel log, instead of rebooting. It also opens
-  a rescue shell over USB: a new serial port appears on the computer
-  (`/dev/ttyACM0` on Linux and macOS, a COM port on Windows; any baud rate).
-  Use `dmesg`, `cat /proc/partitions` there, and share the output.
-- The previous boot's kernel log is in `/sys/fs/pstore` on the next boot.
-- **The screen goes dark after the logo, with no text:** start
-  `fastboot boot boot-debug.img`. It prints every kernel message on the
-  screen: a photo of the last lines shows where the boot stops.
-- **To get a shell:** after a failed boot, hold power + volume down to reach
-  fastboot and start `fastboot boot boot-rescue.img`. It stops in the first
-  stage with the USB rescue shell; there, `dmesg` and
-  `cat /sys/fs/pstore/*` (the failed boot's log) tell what happened.
-  `boot-debug.img` and `boot-rescue.img` are never flashed.
+- Hold **Volume Down** while the phone starts, then **Show the last boot
+  log** in U-Boot's menu: the kernel log of the boot that failed. A photo of
+  its last lines tells where it stopped.
+- astraOS's own log is `/var/log/astraos.log` on the phone.
 
 ## Device notes
 
 | | |
 |---|---|
 | SoC | Qualcomm SM7150-AC (Snapdragon 732G), Adreno 618 |
-| Display | 1080 × 2400 AMOLED (`samsung,ams667yr01`), UI scale 2.75 |
+| Display | 1080 × 2400 AMOLED, command mode (`samsung,ams667yr01`), UI scale 2.75 |
 | Touch | Goodix GT9896 |
-| Partitions | A-only, dynamic partitions in `super` (9126805504 bytes) |
-| Boot chain | stock ABL → U-Boot (`u-boot.img`, header v0, base 0x0, page size 4096) → EFI (`userdata.img`); `boot.img` is header v2 with `Image.gz` + DTB |
+| postmarketOS device | `qcom-sm7150` (community), firmware `firmware-xiaomi-sweet` |
+| Boot chain | stock ABL → U-Boot (`u-boot.img`, header v0) → systemd-boot → postmarketOS kernel + initramfs → OpenRC → astraOS |
 
 ## Layout of this repository
 
 ```
-board.conf            device parameters (kernel, boot image, super)
-packages.txt          Alpine packages providing the userland libraries
-kernel/astra.config   kernel configuration fragment
-rootdir/vendor/       vendor partition: fstab, init scripts
+board.conf            device parameters (postmarketOS release, U-Boot, kernel command line)
+pmos/astraos/         the astraos postmarketOS package (APKBUILD, OpenRC service, udev rules)
+pmos/depends.txt      packages astraOS needs on top of postmarketOS
+rootdir/vendor/       /vendor: device boot actions (init/sweet.rc)
 scripts/              build steps
 flash/                fastboot flashing scripts shipped in the package
-Dockerfile            build environment (Alpine aarch64)
+Dockerfile            build environment for the astraOS steps (Alpine aarch64)
 ```
 
 ## License
 
-Build scripts and configuration: [Apache License 2.0](LICENSE). Firmware
-and Alpine packages keep their own licenses.
+Build scripts and configuration: [Apache License 2.0](LICENSE).
+postmarketOS, Alpine packages and firmware keep their own licenses.

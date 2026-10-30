@@ -1,0 +1,9 @@
+# astraOS device node permissions on postmarketOS. Groups by astraOS's IDs
+# (created by the package; astra-* where Alpine uses the name already), so
+# apps, which get astraOS's group IDs, can open them.
+SUBSYSTEM=="drm", KERNEL=="card[0-9]*", GROUP="graphics", MODE="0666"
+SUBSYSTEM=="drm", KERNEL=="renderD[0-9]*", GROUP="graphics", MODE="0666"
+SUBSYSTEM=="dma_heap", GROUP="graphics", MODE="0660"
+SUBSYSTEM=="sound", GROUP="astra-audio", MODE="0660"
+SUBSYSTEM=="video4linux", GROUP="camera", MODE="0660"
+KERNEL=="rfkill", GROUP="system", MODE="0660"

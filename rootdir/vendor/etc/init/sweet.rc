@@ -1,8 +1,6 @@
-# Xiaomi Redmi Note 10 Pro (sweet) - device specific boot actions
-
-on early-init
-    # Firmware for the Adreno GPU, DSPs and modem lives in /vendor/firmware.
-    write /sys/module/firmware_class/parameters/path /vendor/firmware
+# Xiaomi Redmi Note 10 Pro (sweet) - device specific boot actions, run by
+# astraOS's init (as a service supervisor) on postmarketOS. Firmware comes
+# from postmarketOS's packages in /lib/firmware.
 
 on boot
     # Kryo 470: 6x little (policy0) + 2x big (policy6) cores.

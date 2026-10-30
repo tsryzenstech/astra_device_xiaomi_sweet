@@ -1,0 +1,32 @@
+# astraOS on postmarketOS: the system tree built by astra_device_xiaomi_sweet
+# (scripts/build-pmos.sh fills in the version, the dependencies from
+# pmos/depends.txt and astraos-tree.tar.gz).
+pkgname=astraos
+pkgver=@VERSION@
+pkgrel=0
+pkgdesc="astraOS: system services, SysBoard (the shell) and the system apps"
+url="https://github.com/tsryzenstech/astra"
+arch="aarch64"
+license="Apache-2.0"
+depends="@DEPENDS@"
+install="$pkgname.post-install"
+# A prebuilt tree: nothing to compile, strip or trace (astraOS's libraries
+# live in /system/lib, see etc/ld-musl-aarch64.path).
+options="!check !strip !tracedeps !archcheck !fhs pmb:cross-native"
+source="
+	astraos-tree.tar.gz
+	astraos.initd
+	astraos.confd
+	60-astraos.rules
+	90-astraos.conf
+"
+builddir="$srcdir"
+
+package() {
+	cp -a "$srcdir"/tree/. "$pkgdir"/
+
+	install -Dm755 "$srcdir"/astraos.initd "$pkgdir"/etc/init.d/astraos
+	install -Dm644 "$srcdir"/astraos.confd "$pkgdir"/etc/conf.d/astraos
+	install -Dm644 "$srcdir"/60-astraos.rules -t "$pkgdir"/etc/udev/rules.d
+	install -Dm644 "$srcdir"/90-astraos.conf -t "$pkgdir"/etc/kernel-cmdline.d
+}
