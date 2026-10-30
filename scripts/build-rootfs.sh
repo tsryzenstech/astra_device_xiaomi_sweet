@@ -124,6 +124,25 @@ cp "$OUT/astra-install/system/bin/init" "$RAMDISK/init"
 apk_root add --quiet busybox-static || warn "busybox-static not available: no rescue shell"
 [ -x "$STAGE/bin/busybox.static" ] && cp "$STAGE/bin/busybox.static" "$RAMDISK/bin/busybox"
 cp "$DEVICE_DIR/rootdir/vendor/etc/fstab" "$RAMDISK/first_stage.fstab"
+# GPU firmware: the display driver (msm) brings the Adreno 618 up while the
+# kernel starts, before the first stage mounts /system and /vendor, so its
+# firmware must be in the ramdisk too (else "Direct firmware load for
+# qcom/a630_sqe.fw failed with error -2", no GPU, and SysBoard cannot start).
+for fw in qcom/a630_sqe.fw qcom/a630_gmu.bin; do
+    for f in "$SYSTEM_ROOT/system/lib/firmware/$fw" "$SYSTEM_ROOT/system/lib/firmware/$fw".*; do
+        [ -f "$f" ] || continue
+        mkdir -p "$RAMDISK/lib/firmware/$(dirname "$fw")"
+        cp "$f" "$RAMDISK/lib/firmware/$(dirname "$fw")/"
+    done
+done
+zap=qcom/sm7150/xiaomi/sweet/a615_zap.mbn
+if [ -f "$VENDOR_ROOT/firmware/$zap" ]; then
+    mkdir -p "$RAMDISK/lib/firmware/$(dirname "$zap")"
+    cp "$VENDOR_ROOT/firmware/$zap" "$RAMDISK/lib/firmware/$zap"
+else
+    warn "no GPU zap shader ($zap): the GPU will not start"
+fi
+ls "$RAMDISK/lib/firmware/qcom/"a630_sqe.fw* >/dev/null 2>&1 || warn "no a630_sqe.fw in the ramdisk: the GPU will not start"
 # USB gadget modules for the rescue mode (logs drive and serial shell), when
 # the kernel has the gadget stack as modules (postmarketOS's kernel).
 mods=$OUT/modules/lib/modules/$(kernel_release)
