@@ -104,12 +104,14 @@ pmb -y checksum astraos
 pmb -y build --force --arch aarch64 astraos
 
 # ---- Install -------------------------------------------------------------------
+# Sparse: fastboot sends a sparse image in chunks; a raw one of a few GB
+# makes it run out of memory (std::bad_alloc on Windows).
 # The user account's password (pmbootstrap needs one; nothing logs in with it:
 # no SSH server, no login prompt) stays on the build machine.
 pwfile=$PMB_HOME/password
 [ -f "$pwfile" ] || (umask 077 && openssl rand -hex 12 > "$pwfile")
 log "pmos: installing postmarketOS $PMOS_CHANNEL ($PMOS_DEVICE) with astraOS"
-pmb -y install --zap --no-sshd --password "$(cat "$pwfile")" --add astraos
+pmb -y install --zap --sparse --no-sshd --password "$(cat "$pwfile")" --add astraos
 
 rm -rf "$PMB_HOME/export"
 pmb export "$PMB_HOME/export"
