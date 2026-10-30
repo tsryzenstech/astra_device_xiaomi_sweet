@@ -7,7 +7,7 @@ It produces the usual fastboot images:
 
 | Image | Contents |
 |---|---|
-| `boot.img` | mainline kernel (`sm7150-mainline/linux`), `sm7150-xiaomi-sweet.dtb`, ramdisk with astra first stage init (header v2) |
+| `boot.img` | postmarketOS's SM7150 mainline kernel, `sm7150-xiaomi-sweet.dtb`, ramdisk with astra first stage init (header v2) |
 | `super.img` | dynamic partitions `system`, `vendor`, `product` (sparse, group `qti_dynamic_partitions`) |
 | `vbmeta.img` | empty vbmeta, verification disabled |
 
@@ -61,11 +61,17 @@ sudo scripts/chroot.sh build astra rootfs images package
 
 ## What the build does
 
-1. **fetch** – astraOS, the SM7150 mainline kernel and the device firmware
+1. **fetch** – astraOS and the device firmware
    (`sm7150-mainline/firmware-xiaomi-sweet`, non-free, downloaded at build
    time and never committed here).
-2. **kernel** – `defconfig` + `sm7150.config` + [`kernel/astra.config`](kernel/astra.config)
-   (UFS, device-mapper and ext4 built in for the first stage).
+2. **kernel** – by default the prebuilt kernel postmarketOS ships for SM7150
+   phones (`linux-postmarketos-qcom-sm7150`, sm7150-mainline 7.1-rc3, the one
+   known to boot sweet with its display): downloaded from the postmarketOS
+   mirror, checked against `PMOS_KERNEL_SHA256`, and unpacked (image, device
+   tree, modules). `KERNEL_SOURCE=source` builds sm7150-mainline instead, from
+   `defconfig` + `sm7150.config` + [`kernel/astra.config`](kernel/astra.config).
+   Either way the uncompressed kernel must stay under 31 MB: the bootloader
+   puts the device tree right after that and a bigger kernel overwrites it.
 3. **astra** – builds the astraOS system code natively for aarch64/musl
    (static `init` for the ramdisk).
 4. **rootfs** – installs the userland libraries (musl, Mesa, Qt 6...) from
