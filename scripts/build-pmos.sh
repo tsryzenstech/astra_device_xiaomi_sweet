@@ -23,7 +23,8 @@ mkdir -p "$PMB_HOME"
 
 log "pmos: pmbootstrap $PMB_REF"
 git_fetch "$PMB_REPO" "$PMB_REF" "$PMB"
-pmb() { python3 "$PMB/pmbootstrap.py" -c "$CFG" -w "$WORK" --details-to-stdout "$@"; }
+# Details go to $WORK/log.txt.
+pmb() { python3 "$PMB/pmbootstrap.py" -c "$CFG" -w "$WORK" "$@"; }
 pmb_value() { python3 "$PMB/pmbootstrap.py" -c "$CFG" -w "$WORK" -q config "$1"; }
 
 # First run: pmbootstrap's own setup with its default answers (as its CI
