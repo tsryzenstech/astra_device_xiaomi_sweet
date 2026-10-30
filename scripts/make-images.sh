@@ -66,7 +66,11 @@ mkboot boot-rescue.img "$DEBUG_CMDLINE astra.rescue"
 log "images: userdata.img (for U-Boot)"
 need ukify mkfs.vfat mcopy
 esp=$OUT/esp
-rm -rf "$esp" && mkdir -p "$esp/EFI/BOOT"
+rm -rf "$esp" && mkdir -p "$esp/EFI/BOOT" "$esp/dtb/$(dirname "$KERNEL_DTB")"
+# U-Boot passes Linux the device tree it finds in /dtb/<fdtfile> on the EFI
+# partition (fdtfile = qcom/sm7150-xiaomi-sweet.dtb), else its own, built
+# from other sources: the kernel's own device tree must be there.
+cp "$KOUT/dts/$KERNEL_DTB" "$esp/dtb/$KERNEL_DTB"
 gzip -dc "$KOUT/Image.gz" > "$OUT/Image"
 ukify build --linux "$OUT/Image" --initrd "$OUT/ramdisk.cpio.gz" --cmdline "$BOOT_CMDLINE" \
     --uname "$(kernel_release)" --output "$esp/EFI/BOOT/BOOTAA64.EFI" >/dev/null
