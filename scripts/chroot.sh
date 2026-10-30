@@ -48,10 +48,10 @@ enter() {
     trap 'umount -R "$ROOT/work/device" "$ROOT/work/astra" "$ROOT/proc" "$ROOT/sys" "$ROOT/dev" 2>/dev/null || true' EXIT
     # Older builds copied astraOS init over the chroot's /bin/busybox (and
     # so /bin/sh): put busybox back.
-    if ! "$ROOT/bin/busybox" --help 2>&1 | grep -q BusyBox; then
+    if ! chroot "$ROOT" /bin/busybox --help 2>&1 | grep -q BusyBox; then
         echo "chroot: repairing /bin/busybox"
         chroot "$ROOT" /sbin/apk fix --reinstall busybox >/dev/null 2>&1 || true
-        "$ROOT/bin/busybox" --help 2>&1 | grep -q BusyBox || echo "chroot: could not repair busybox, run: sudo scripts/chroot.sh setup" >&2
+        chroot "$ROOT" /bin/busybox --help 2>&1 | grep -q BusyBox || echo "chroot: could not repair busybox, run: sudo scripts/chroot.sh setup" >&2
     fi
     # Build dependencies added since the chroot was set up.
     chroot "$ROOT" /sbin/apk add --quiet $(grep -v '^#' "$DEVICE_DIR/scripts/build-deps.txt") >/dev/null 2>&1 ||
