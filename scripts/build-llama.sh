@@ -24,6 +24,7 @@ cmake -S "$src" -B "$build" -G Ninja \
     -DLLAMA_BUILD_TOOLS=ON \
     -DLLAMA_BUILD_SERVER=ON
 cmake --build "$build" --target llama-server -j "$JOBS"
-mkdir -p "$OUT/astra-install/system/bin"
-install -m 0755 "$build/bin/llama-server" "$OUT/astra-install/system/bin/llama-server"
+# Its own folder: the astra step clears astra-install.
+mkdir -p "$OUT/llama-install/system/bin"
+install -m 0755 "$build/bin/llama-server" "$OUT/llama-install/system/bin/llama-server"
 log "llama.cpp: installed system/bin/llama-server"

@@ -61,6 +61,8 @@ rm -rf "$SYSTEM_ROOT/system/lib/apk" "$SYSTEM_ROOT/system/etc/apk" "$SYSTEM_ROOT
 # BusyBox (and overwrote the build machine's busybox).
 cp -a --remove-destination "$OUT/astra-install/." "$SYSTEM_ROOT/"
 [ -L "$SYSTEM_ROOT/system/bin/init" ] && die "/system/bin/init is a link, not astraOS init"
+# Cloudy's engine (scripts/build-llama.sh)
+[ -d "$OUT/llama-install" ] && cp -a --remove-destination "$OUT/llama-install/." "$SYSTEM_ROOT/"
 
 # Kernel modules
 mkdir -p "$SYSTEM_ROOT/system/lib/modules"
@@ -122,6 +124,19 @@ cp "$OUT/astra-install/system/bin/init" "$RAMDISK/init"
 apk_root add --quiet busybox-static || warn "busybox-static not available: no rescue shell"
 [ -x "$STAGE/bin/busybox.static" ] && cp "$STAGE/bin/busybox.static" "$RAMDISK/bin/busybox"
 cp "$DEVICE_DIR/rootdir/vendor/etc/fstab" "$RAMDISK/first_stage.fstab"
+# USB gadget modules for the rescue mode (logs drive and serial shell), when
+# the kernel has the gadget stack as modules (postmarketOS's kernel).
+mods=$OUT/modules/lib/modules/$(kernel_release)
+mkdir -p "$RAMDISK/lib/modules"
+: > "$RAMDISK/lib/modules/gadget.order"
+for m in kernel/drivers/usb/gadget/libcomposite kernel/drivers/usb/gadget/function/u_serial \
+         kernel/drivers/usb/gadget/function/usb_f_acm kernel/drivers/usb/gadget/function/usb_f_mass_storage; do
+    for f in "$mods/$m".ko*; do
+        [ -f "$f" ] || continue
+        cp "$f" "$RAMDISK/lib/modules/"
+        basename "$f" >> "$RAMDISK/lib/modules/gadget.order"
+    done
+done
 (cd "$RAMDISK" && find . | LC_ALL=C sort | cpio -o -H newc -R 0:0 --quiet | gzip -9n) > "$OUT/ramdisk.cpio.gz"
 
 log "rootfs: system $(du -sh "$SYSTEM_ROOT" | cut -f1), vendor $(du -sh "$VENDOR_ROOT" | cut -f1)"
