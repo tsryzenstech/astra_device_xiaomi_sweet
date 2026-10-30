@@ -7,7 +7,10 @@ It produces the usual fastboot images:
 
 | Image | Contents |
 |---|---|
-| `boot.img` | postmarketOS's SM7150 mainline kernel, `sm7150-xiaomi-sweet.dtb`, ramdisk with astra first stage init (header v2) |
+| `u-boot.img` | [astraOS's U-Boot](https://github.com/tsryzenstech/astra-uboot) (sm7150-mainline's, silent, without logos), flashed to `boot` |
+| `userdata.img` | start of `userdata`: GPT (4096 byte sectors) with the EFI partition `astra_esp` holding `\EFI\BOOT\BOOTAA64.EFI`, a unified kernel image (kernel, ramdisk, command line) |
+| `boot.img` | the same kernel and ramdisk for the stock bootloader (header v2), used with `--stock-boot` |
+| `boot-debug.img`, `boot-rescue.img` | for `fastboot boot` only: every kernel message on screen / USB rescue mode with a logs drive |
 | `super.img` | dynamic partitions `system`, `vendor`, `product` (sparse, group `qti_dynamic_partitions`) |
 | `vbmeta.img` | empty vbmeta, verification disabled |
 
@@ -47,7 +50,7 @@ GitHub/
 
 The zip lands in `out/astraOS-<version>-sweet-<date>.zip`.
 
-Steps can be run one at a time: `./build.sh --docker fetch kernel astra rootfs images package`.
+Steps can be run one at a time: `./build.sh --docker fetch kernel uboot astra rootfs images package`.
 
 ### Without Docker (e.g. WSL)
 
@@ -56,7 +59,7 @@ sudo apt install qemu-user-static binfmt-support gcc-aarch64-linux-gnu bc bison 
 sudo scripts/chroot.sh setup                              # Alpine aarch64 build root
 ./build.sh fetch
 CROSS_COMPILE=aarch64-linux-gnu- ./build.sh kernel       # fast: cross compiled on the host
-sudo scripts/chroot.sh build astra rootfs images package
+sudo scripts/chroot.sh build uboot astra rootfs images package
 ```
 
 ## What the build does
@@ -79,9 +82,24 @@ sudo scripts/chroot.sh build astra rootfs images package
    the astraOS layout (`/system/{bin,lib,etc}`, with `/bin`, `/lib`, `/etc`,
    `/usr` as symlinks), adds astraOS, kernel modules, the vendor partition
    ([`rootdir/vendor`](rootdir/vendor)) and the ramdisk.
-5. **images** – ext4 images, `boot.img` (stock ABL parameters, see
+5. **uboot** – clones [astra-uboot](https://github.com/tsryzenstech/astra-uboot)
+   (`UBOOT_REPO`, branch `UBOOT_REF`), builds it with `astra.config` for
+   `sm7150-xiaomi-sweet` and wraps it for the stock bootloader (`u-boot.img`).
+6. **images** – ext4 images, `userdata.img` (EFI partition with the unified
+   kernel image, made with `ukify`), `boot.img` (stock ABL parameters, see
    [`board.conf`](board.conf)), `super.img` with `lpmake`, `vbmeta.img`.
-6. **package** – zip with the images and flashing scripts.
+7. **package** – zip with the images, `u-boot.img` and the flashing scripts.
+
+### How the phone boots
+
+The stock bootloader starts **U-Boot** from `boot`. U-Boot maps `userdata`
+as a disk (its first 128 MiB are `userdata.img`) and starts the EFI
+application of its EFI partition: astraOS's kernel with the ramdisk and the
+command line. astraOS's first stage init maps the dynamic partitions of
+`super`, and maps the rest of `userdata` (after the first 128 MiB) as
+`/data`. This is how postmarketOS boots SM7150 phones. U-Boot shows nothing:
+hold **Volume Down** while the phone starts for its boot menu (also shown
+when a boot fails).
 
 ## Flash
 
@@ -93,8 +111,10 @@ the extracted package:
 ./flash-all.sh             # updates, keeps your data
 ```
 
-On Windows use `flash-all.bat` (same arguments). The first boot formats
-`/data` as ext4.
+On Windows use `flash-all.bat` (same arguments). They flash `u-boot.img` to
+`boot`, `super.img`, and `userdata.img` to the start of `userdata`. The
+first boot formats `/data` as ext4. `--stock-boot` flashes `boot.img`
+instead, started by the stock bootloader without U-Boot.
 
 To go back to MIUI/HyperOS, flash a stock fastboot ROM with Xiaomi's tool.
 
@@ -126,7 +146,7 @@ To go back to MIUI/HyperOS, flash a stock fastboot ROM with Xiaomi's tool.
 | Display | 1080 × 2400 AMOLED (`samsung,ams667yr01`), UI scale 2.75 |
 | Touch | Goodix GT9896 |
 | Partitions | A-only, dynamic partitions in `super` (9126805504 bytes) |
-| Boot image | header v2, base 0x0, page size 4096, `Image.gz` + DTB |
+| Boot chain | stock ABL → U-Boot (`u-boot.img`, header v0, base 0x0, page size 4096) → EFI (`userdata.img`); `boot.img` is header v2 with `Image.gz` + DTB |
 
 ## Layout of this repository
 

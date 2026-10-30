@@ -6,6 +6,7 @@
 #
 #   ./flash-all.sh          update an existing astraOS install (keeps /data)
 #   ./flash-all.sh --wipe   first install: also erases userdata (ALL your data)
+#   --stock-boot            start boot.img from the stock bootloader instead of U-Boot
 #
 # With u-boot.img (sm7150-mainline's U-Boot for sweet) next to this script,
 # U-Boot goes to boot and starts astraOS from userdata.img (the start of
@@ -26,7 +27,10 @@ sha256sum -c SHA256SUMS >/dev/null 2>&1 || { echo "Image checksums do not match,
 fastboot flash vbmeta --disable-verity --disable-verification vbmeta.img
 # The stock overlays do not fit the mainline device tree: erase them.
 fastboot erase dtbo
-if [ -f u-boot.img ]; then
+uboot=0
+[ -f u-boot.img ] && uboot=1
+case " $* " in *" --stock-boot "*) uboot=0 ;; esac
+if [ "$uboot" = 1 ]; then
     echo "Flashing U-Boot to boot..."
     fastboot flash boot u-boot.img
 else
@@ -34,12 +38,12 @@ else
 fi
 fastboot flash super super.img
 
-if [ "$1" = "--wipe" ]; then
+if case " $* " in *" --wipe "*) true ;; *) false ;; esac; then
     echo "Erasing userdata and metadata..."
     fastboot erase metadata
     fastboot erase userdata
 fi
-if [ -f u-boot.img ]; then
+if [ "$uboot" = 1 ]; then
     echo "Flashing the EFI partition at the start of userdata..."
     fastboot flash userdata userdata.img
 fi

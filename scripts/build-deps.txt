@@ -7,3 +7,4 @@ qt6-qtmultimedia-dev qt6-qtshadertools-dev qt6-qtwebengine-dev
 libdrm-dev libpng-dev zlib-dev
 e2fsprogs e2fsprogs-extra android-tools
 dosfstools mtools ukify systemd-efistub
+gnutls-dev util-linux-dev py3-elftools py3-setuptools dtc
