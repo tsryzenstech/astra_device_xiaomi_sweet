@@ -113,10 +113,10 @@ pwfile=$PMB_HOME/password
 log "pmos: installing postmarketOS $PMOS_CHANNEL ($PMOS_DEVICE) with astraOS"
 pmb -y install --zap --sparse --no-sshd --password "$(cat "$pwfile")" --add astraos
 
-rm -rf "$PMB_HOME/export"
-pmb export "$PMB_HOME/export"
+# Where pmbootstrap install leaves the image ("pmbootstrap export" would only
+# link to it, after setting the device chroot up again).
 mkdir -p "$OUT/pmos"
-img=$PMB_HOME/export/$PMOS_DEVICE.img
+img=$WORK/chroot_native/home/pmos/rootfs/$PMOS_DEVICE.img
 [ -e "$img" ] || die "pmos: pmbootstrap did not produce $PMOS_DEVICE.img"
 cp -L "$img" "$OUT/pmos/userdata.img" 2>/dev/null || { sudo cp -L "$img" "$OUT/pmos/userdata.img" && sudo chown "$(id -u):$(id -g)" "$OUT/pmos/userdata.img"; }
 echo "$pkgver" > "$OUT/pmos/version"
