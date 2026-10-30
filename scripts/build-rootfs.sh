@@ -83,6 +83,7 @@ ln -sfn system/bin/init init
 chmod 1777 tmp
 # Resolver configuration is written at runtime (iwd -> openresolv, modem bearers).
 ln -sfn /run/resolv.conf system/etc/resolv.conf
+ln -sfn /run/machine-id system/etc/machine-id
 cd - >/dev/null
 
 # ---- 3. Vendor ---------------------------------------------------------------

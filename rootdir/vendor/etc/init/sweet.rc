@@ -10,3 +10,16 @@ on boot
     write /sys/devices/system/cpu/cpufreq/policy6/scaling_governor schedutil
     # UFS: avoid the block layer reordering small random writes.
     write /sys/block/sda/queue/scheduler none
+    # DRM display and render nodes permissions
+    chmod 0666 /dev/dri/card0
+    chmod 0666 /dev/dri/card1
+    chmod 0666 /dev/dri/renderD128
+    chown system graphics /dev/dri/card0
+    chown system graphics /dev/dri/card1
+    chown system graphics /dev/dri/renderD128
+    # Backlight and panel power
+    chmod 0664 /sys/class/backlight/*/brightness
+    chmod 0664 /sys/class/backlight/*/bl_power
+    chown system system /sys/class/backlight/*/brightness
+    chown system system /sys/class/backlight/*/bl_power
+    write /sys/class/backlight/*/bl_power 0
