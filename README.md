@@ -112,8 +112,10 @@ the extracted package:
 ```
 
 On Windows use `flash-all.bat` (same arguments). They flash `u-boot.img` to
-`boot`, `super.img`, and `userdata.img` to the start of `userdata`. The
-first boot formats `/data` as ext4. `--stock-boot` flashes `boot.img`
+`boot`, `super.img`, and `userdata.img` to the start of `userdata`; with
+`--wipe`, `userdata-wipe.img` instead, which also clears where `/data`
+starts, and the first boot formats `/data` as ext4. (The whole of `userdata`
+is never erased: on this UFS it takes longer than fastboot waits over USB.) `--stock-boot` flashes `boot.img`
 instead, started by the stock bootloader without U-Boot.
 
 To go back to MIUI/HyperOS, flash a stock fastboot ROM with Xiaomi's tool.

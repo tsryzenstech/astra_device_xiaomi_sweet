@@ -38,14 +38,24 @@ else
 fi
 fastboot flash super super.img
 
-if case " $* " in *" --wipe "*) true ;; *) false ;; esac; then
+wipe=0
+case " $* " in *" --wipe "*) wipe=1 ;; esac
+# With U-Boot, userdata starts with the EFI partition. --wipe flashes the
+# version that also clears where /data starts (the phone formats it on the
+# first boot): erasing the whole partition takes longer than USB waits.
+if [ "$uboot" = 1 ]; then
+    if [ "$wipe" = 1 ]; then
+        echo "Erasing metadata, flashing the EFI partition and clearing /data..."
+        fastboot erase metadata
+        fastboot flash userdata userdata-wipe.img
+    else
+        echo "Flashing the EFI partition at the start of userdata..."
+        fastboot flash userdata userdata.img
+    fi
+elif [ "$wipe" = 1 ]; then
     echo "Erasing userdata and metadata..."
     fastboot erase metadata
     fastboot erase userdata
-fi
-if [ "$uboot" = 1 ]; then
-    echo "Flashing the EFI partition at the start of userdata..."
-    fastboot flash userdata userdata.img
 fi
 
 fastboot reboot

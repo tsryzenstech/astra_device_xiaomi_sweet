@@ -78,6 +78,11 @@ rm -f "$OUT/esp.fat"
 mkfs.vfat -C -S "$STORAGE_SECTOR_SIZE" -s 1 -F 16 -n ASTRAESP "$OUT/esp.fat" $(( 64 * 1024 )) >/dev/null
 mcopy -s -i "$OUT/esp.fat" "$esp"/* ::/
 python3 "$DEVICE_DIR/scripts/mkuserdata.py" "$OUT/esp.fat" "$IMAGES/userdata.img" "$STORAGE_SECTOR_SIZE"
+# userdata-wipe.img (flash-all --wipe): one more MiB of zeros clears the old
+# filesystem's signature where /data starts, so init formats /data. Erasing
+# the whole of userdata instead takes longer than fastboot over USB waits.
+cp "$IMAGES/userdata.img" "$IMAGES/userdata-wipe.img"
+truncate -s +1M "$IMAGES/userdata-wipe.img"
 rm -f "$IMAGES/esp.img"
 
 log "images: vbmeta.img (verification disabled)"
@@ -91,5 +96,5 @@ for p in $SUPER_PARTITIONS; do
 done
 lpmake "${args[@]}" >/dev/null
 
-(cd "$IMAGES" && sha256sum boot.img boot-debug.img boot-rescue.img userdata.img vbmeta.img super.img > SHA256SUMS)
+(cd "$IMAGES" && sha256sum boot.img boot-debug.img boot-rescue.img userdata.img userdata-wipe.img vbmeta.img super.img > SHA256SUMS)
 log "images: done ($IMAGES)"

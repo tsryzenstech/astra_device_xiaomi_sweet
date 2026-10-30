@@ -32,14 +32,24 @@ fastboot flash super super.img || exit /b 1
 set wipe=0
 if "%~1"=="--wipe" set wipe=1
 if "%~2"=="--wipe" set wipe=1
-if "%wipe%"=="1" (
-    echo Erasing userdata and metadata...
-    fastboot erase metadata
-    fastboot erase userdata
-)
+rem With U-Boot, userdata starts with the EFI partition. --wipe flashes the
+rem version that also clears where /data starts (the phone formats it on the
+rem first boot): erasing the whole partition takes longer than USB waits.
 if "%uboot%"=="1" (
-    echo Flashing the EFI partition at the start of userdata...
-    fastboot flash userdata userdata.img || exit /b 1
+    if "%wipe%"=="1" (
+        echo Erasing metadata, flashing the EFI partition and clearing /data...
+        fastboot erase metadata
+        fastboot flash userdata userdata-wipe.img || exit /b 1
+    ) else (
+        echo Flashing the EFI partition at the start of userdata...
+        fastboot flash userdata userdata.img || exit /b 1
+    )
+) else (
+    if "%wipe%"=="1" (
+        echo Erasing userdata and metadata...
+        fastboot erase metadata
+        fastboot erase userdata
+    )
 )
 
 fastboot reboot
