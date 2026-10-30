@@ -22,7 +22,17 @@ sha256sum -c SHA256SUMS >/dev/null 2>&1 || { echo "Image checksums do not match,
 fastboot flash vbmeta --disable-verity --disable-verification vbmeta.img
 # The stock overlays do not fit the mainline device tree: erase them.
 fastboot erase dtbo
-fastboot flash boot boot.img
+# With u-boot.img (sm7150-mainline U-Boot for sweet) next to this script,
+# U-Boot goes to boot and starts astraOS from esp.img on cache; without it,
+# boot.img is started directly by the stock bootloader.
+if [ -f u-boot.img ]; then
+    echo "Flashing U-Boot to boot, astraOS boot files to cache..."
+    fastboot flash boot u-boot.img
+    fastboot flash cache esp.img
+else
+    fastboot flash boot boot.img
+    fastboot flash cache esp.img || true
+fi
 fastboot flash super super.img
 
 if [ "$1" = "--wipe" ]; then

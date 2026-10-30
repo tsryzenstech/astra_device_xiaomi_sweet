@@ -13,7 +13,17 @@ fastboot getvar product 2>&1 | findstr /r /c:"^product: *sweet" >nul || (echo Th
 fastboot flash vbmeta --disable-verity --disable-verification vbmeta.img || exit /b 1
 rem The stock overlays do not fit the mainline device tree: erase them.
 fastboot erase dtbo || exit /b 1
-fastboot flash boot boot.img || exit /b 1
+rem With u-boot.img (sm7150-mainline U-Boot for sweet) next to this file,
+rem U-Boot goes to boot and starts astraOS from esp.img on cache; without
+rem it, boot.img is started directly by the stock bootloader.
+if exist u-boot.img (
+    echo Flashing U-Boot to boot, astraOS boot files to cache...
+    fastboot flash boot u-boot.img || exit /b 1
+    fastboot flash cache esp.img || exit /b 1
+) else (
+    fastboot flash boot boot.img || exit /b 1
+    fastboot flash cache esp.img
+)
 fastboot flash super super.img || exit /b 1
 
 if "%~1"=="--wipe" (

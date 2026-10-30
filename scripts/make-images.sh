@@ -57,6 +57,36 @@ mkboot boot-rescue.img "$DEBUG_CMDLINE astra.rescue"
 # bootloader refuses to boot (back to fastboot) when a valid dtbo table has
 # no entry for the board. The flash scripts erase dtbo, which it skips.
 
+# esp.img, for the cache partition, when U-Boot (sm7150-mainline) is
+# flashed to boot instead of boot.img: U-Boot starts the same kernel and
+# ramdisk from a FAT partition, either \EFI\BOOT\BOOTAA64.EFI (a unified
+# kernel image with the command line) or extlinux/extlinux.conf.
+log "images: esp.img (for U-Boot)"
+esp=$OUT/esp
+rm -rf "$esp" && mkdir -p "$esp/EFI/BOOT" "$esp/extlinux" "$esp/dtbs/qcom"
+gzip -dc "$KOUT/Image.gz" > "$esp/Image"
+cp "$OUT/ramdisk.cpio.gz" "$esp/initramfs"
+cp "$KOUT/dts/$KERNEL_DTB" "$esp/dtbs/$KERNEL_DTB"
+cat > "$esp/extlinux/extlinux.conf" <<EOF
+default astraOS
+timeout 1
+label astraOS
+    kernel /Image
+    initrd /initramfs
+    fdt /dtbs/$KERNEL_DTB
+    append $BOOT_CMDLINE
+EOF
+if command -v ukify >/dev/null; then
+    ukify build --linux "$esp/Image" --initrd "$esp/initramfs" --cmdline "$BOOT_CMDLINE" \
+        --uname "$(kernel_release)" --output "$esp/EFI/BOOT/BOOTAA64.EFI" >/dev/null
+else
+    warn "ukify missing: esp.img only has extlinux.conf"
+fi
+esp_mb=$(( $(du -sm "$esp" | cut -f1) + 16 ))
+rm -f "$IMAGES/esp.img"
+mkfs.vfat -C -n ASTRABOOT "$IMAGES/esp.img" $(( esp_mb * 1024 )) >/dev/null
+mcopy -s -i "$IMAGES/esp.img" "$esp"/* ::/
+
 log "images: vbmeta.img (verification disabled)"
 avbtool make_vbmeta_image --flags 3 --padding_size 4096 --output "$IMAGES/vbmeta.img"
 
@@ -68,5 +98,5 @@ for p in $SUPER_PARTITIONS; do
 done
 lpmake "${args[@]}" >/dev/null
 
-(cd "$IMAGES" && sha256sum boot.img boot-debug.img boot-rescue.img vbmeta.img super.img > SHA256SUMS)
+(cd "$IMAGES" && sha256sum boot.img boot-debug.img boot-rescue.img esp.img vbmeta.img super.img > SHA256SUMS)
 log "images: done ($IMAGES)"

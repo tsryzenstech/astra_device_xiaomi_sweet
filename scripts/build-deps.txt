@@ -6,3 +6,4 @@ qt6-qtbase-dev qt6-qtbase-private-dev qt6-qtdeclarative-dev qt6-qtwayland-dev qt
 qt6-qtmultimedia-dev qt6-qtshadertools-dev qt6-qtwebengine-dev
 libdrm-dev libpng-dev zlib-dev
 e2fsprogs e2fsprogs-extra android-tools
+dosfstools mtools ukify systemd-efistub
