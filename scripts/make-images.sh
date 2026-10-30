@@ -38,6 +38,12 @@ mkboot() {   # mkboot <file> <cmdline>
         --os_patch_level "$BOOT_OS_PATCH_LEVEL" \
         --output "$IMAGES/$1"
 }
+# The bootloader puts the device tree BOOT_DTB_OFFSET - BOOT_KERNEL_OFFSET
+# after the kernel: a bigger (uncompressed) kernel overwrites it, and the
+# phone hangs on a grey screen before printing anything.
+ksize=$(gzip -dc "$KOUT/Image.gz" | wc -c)
+room=$(( BOOT_DTB_OFFSET - BOOT_KERNEL_OFFSET ))
+[ "$ksize" -lt "$room" ] || die "the kernel is $ksize bytes, more than the $room bytes before the device tree"
 mkboot boot.img "$BOOT_CMDLINE"
 # For bring-up, started with `fastboot boot` (never flashed):
 #  - boot-debug.img prints every kernel message on the screen;

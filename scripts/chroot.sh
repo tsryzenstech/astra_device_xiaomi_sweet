@@ -53,6 +53,9 @@ enter() {
         chroot "$ROOT" /sbin/apk fix --reinstall busybox >/dev/null 2>&1 || true
         "$ROOT/bin/busybox" --help 2>&1 | grep -q BusyBox || echo "chroot: could not repair busybox, run: sudo scripts/chroot.sh setup" >&2
     fi
+    # Build dependencies added since the chroot was set up.
+    chroot "$ROOT" /sbin/apk add --quiet $(grep -v '^#' "$DEVICE_DIR/scripts/build-deps.txt") >/dev/null 2>&1 ||
+        echo "chroot: could not update the build dependencies (offline?)" >&2
     chroot "$ROOT" /usr/bin/env -i HOME=/root PATH=/usr/sbin:/usr/bin:/sbin:/bin TERM="${TERM:-xterm}" \
         ASTRA_SRC=$( [ -d "$ROOT/work/astra/core" ] && echo /work/astra ) JOBS="${JOBS:-$(nproc)}" "$@"
 }

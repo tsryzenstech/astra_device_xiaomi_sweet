@@ -1,5 +1,5 @@
 # Alpine packages needed to build astraOS for sweet (Docker image and chroot).
-bash coreutils findutils diffutils grep sed gawk xz gzip zip cpio git python3 perl curl
+bash coreutils findutils diffutils grep sed gawk xz gzip zstd tar zip cpio git python3 perl curl
 build-base linux-headers cmake samurai pkgconf
 bc bison flex openssl-dev elfutils-dev kmod
 qt6-qtbase-dev qt6-qtbase-private-dev qt6-qtdeclarative-dev qt6-qtwayland-dev qt6-qtsvg-dev
