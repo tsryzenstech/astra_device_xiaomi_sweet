@@ -84,17 +84,13 @@ enter() {
     # Unmount, and give the build output back to the user who ran sudo
     # (the pmos and package steps run as that user).
     trap 'unmount; [ -n "${SUDO_UID:-}" ] && chown -R "$SUDO_UID:${SUDO_GID:-$SUDO_UID}" "$DEVICE_DIR/out" "$DEVICE_DIR/cache/src" 2>/dev/null; true' EXIT
-    # Older builds copied astraOS init over the chroot's /bin/busybox (and
-    # so /bin/sh): put busybox back.
-    if ! chroot "$ROOT" /bin/busybox --help 2>&1 | grep -q BusyBox; then
-        echo "chroot: repairing /bin/busybox"
-        chroot "$ROOT" /sbin/apk fix --reinstall busybox >/dev/null 2>&1 || true
-        chroot "$ROOT" /bin/busybox --help 2>&1 | grep -q BusyBox || echo "chroot: could not repair busybox, run: sudo scripts/chroot.sh setup" >&2
-    fi
     # Build dependencies added since the chroot was set up.
     chroot "$ROOT" /sbin/apk add --quiet $(grep -v '^#' "$DEVICE_DIR/scripts/build-deps.txt") >/dev/null 2>&1 ||
         echo "chroot: could not update the build dependencies (offline?)" >&2
+    # The source trees belong to the user who runs the build, not to root:
+    # git must still work in them (safe.directory).
     chroot "$ROOT" /usr/bin/env -i HOME=/root PATH=/usr/sbin:/usr/bin:/sbin:/bin TERM="${TERM:-xterm}" \
+        GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0='*' \
         ASTRA_SRC=$( [ -d "$ROOT/work/astra/core" ] && echo /work/astra ) JOBS="${JOBS:-$(nproc)}" "$@"
 }
 
