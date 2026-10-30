@@ -7,7 +7,7 @@ It produces the usual fastboot images:
 
 | Image | Contents |
 |---|---|
-| `u-boot.img` | [astraOS's U-Boot](https://github.com/tsryzenstech/astra-uboot) (sm7150-mainline's, silent, without logos), flashed to `boot` |
+| `u-boot.img` | [astraOS's U-Boot](https://github.com/tsryzenstech/u-boot/tree/astra) (sm7150-mainline's, silent, without logos), flashed to `boot` |
 | `userdata.img` | start of `userdata`: GPT (4096 byte sectors) with the EFI partition `astra_esp` holding `\EFI\BOOT\BOOTAA64.EFI`, a unified kernel image (kernel, ramdisk, command line) |
 | `boot.img` | the same kernel and ramdisk for the stock bootloader (header v2), used with `--stock-boot` |
 | `boot-debug.img`, `boot-rescue.img` | for `fastboot boot` only: every kernel message on screen / USB rescue mode with a logs drive |
@@ -82,7 +82,7 @@ sudo scripts/chroot.sh build uboot astra rootfs images package
    the astraOS layout (`/system/{bin,lib,etc}`, with `/bin`, `/lib`, `/etc`,
    `/usr` as symlinks), adds astraOS, kernel modules, the vendor partition
    ([`rootdir/vendor`](rootdir/vendor)) and the ramdisk.
-5. **uboot** – clones [astra-uboot](https://github.com/tsryzenstech/astra-uboot)
+5. **uboot** – clones [tsryzenstech/u-boot](https://github.com/tsryzenstech/u-boot/tree/astra) (branch `astra`)
    (`UBOOT_REPO`, branch `UBOOT_REF`), builds it with `astra.config` for
    `sm7150-xiaomi-sweet` and wraps it for the stock bootloader (`u-boot.img`).
 6. **images** – ext4 images, `userdata.img` (EFI partition with the unified

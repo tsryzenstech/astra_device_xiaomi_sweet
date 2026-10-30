@@ -8,11 +8,13 @@
 source "$(dirname "$0")/common.sh"
 need git make gcc bison flex python3 mkbootimg gzip
 
-# Until the fork is published the package simply has no u-boot.img.
-if ! git ls-remote --exit-code "$UBOOT_REPO" "$UBOOT_REF" >/dev/null 2>&1; then
-    warn "u-boot: $UBOOT_REPO ($UBOOT_REF) is not reachable: no u-boot.img"
+# Every package ships u-boot.img; UBOOT_REPO= builds one without it.
+if [ -z "$UBOOT_REPO" ]; then
+    warn "u-boot: UBOOT_REPO is empty: no u-boot.img"
     exit 0
 fi
+git ls-remote --exit-code "$UBOOT_REPO" "$UBOOT_REF" >/dev/null 2>&1 ||
+    die "u-boot: $UBOOT_REPO ($UBOOT_REF) is not reachable"
 src=$SRC/u-boot
 log "u-boot: $UBOOT_REPO ($UBOOT_REF)"
 git_fetch "$UBOOT_REPO" "$UBOOT_REF" "$src"
