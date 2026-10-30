@@ -27,5 +27,11 @@ depend() {
 start_pre() {
 	checkpath -d -m 0755 /dev/socket
 	checkpath -d -m 0771 /data
+	# Tools astraOS runs as /system/bin/<name>.
+	local tool path
+	for tool in sh udevadm mke2fs mkfs.f2fs; do
+		path=$(command -v "$tool") || continue
+		[ -e "/system/bin/$tool" ] || ln -s "$path" "/system/bin/$tool"
+	done
 	export TZ="${TZ:-UTC}"
 }

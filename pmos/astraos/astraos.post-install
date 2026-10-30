@@ -1,6 +1,8 @@
 #!/bin/sh
-# astraOS on postmarketOS: users and groups with astraOS's IDs, the system
-# tools astraOS calls by /system/bin path, and the services it needs.
+# astraOS on postmarketOS: users and groups with astraOS's IDs, and the
+# settings astraOS needs in other packages' files. (The services are enabled
+# by the runlevel links in the package; /system/bin's links to system tools
+# are made when the service starts, once every package is installed.)
 
 # astraOS's IDs (core/init/util.c). Names Alpine already uses (input, audio,
 # video...) get an astra- prefix: astraOS refers to them by number.
@@ -17,16 +19,13 @@ done
 grep -q "^[^:]*:[^:]*:1000:" /etc/passwd ||
 	adduser -S -D -H -h /data/system -s /sbin/nologin -u 1000 -G system system 2>/dev/null || true
 
-# Tools astraOS runs as /system/bin/<name>.
-for tool in sh udevadm mke2fs mkfs.f2fs; do
-	path=$(command -v "$tool" 2>/dev/null) || continue
-	[ -e "/system/bin/$tool" ] || ln -s "$path" "/system/bin/$tool"
-done
+# iwd configures addresses and DNS itself: astrad only drives it over D-Bus.
+# (iwd ships its own, all commented, main.conf.)
+if [ -f /system/etc/iwd/main.conf ]; then
+	mkdir -p /etc/iwd
+	cp /system/etc/iwd/main.conf /etc/iwd/main.conf
+fi
 
 # No login prompts on the screen: SysBoard owns the display.
 [ -f /etc/inittab ] && sed -i 's/^\(tty[0-9]*::respawn:\)/#\1/' /etc/inittab
-
-for svc in dbus iwd bluetooth modemmanager astraos; do
-	[ -e "/etc/init.d/$svc" ] && rc-update add "$svc" default >/dev/null 2>&1
-done
 exit 0
