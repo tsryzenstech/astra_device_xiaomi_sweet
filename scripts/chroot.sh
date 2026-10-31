@@ -37,6 +37,30 @@ unmount() {
     done
 }
 
+# On non-arm64 hosts the chroot's programs run through qemu-user, registered
+# in binfmt_misc. pmbootstrap (the pmos step) replaces that registration
+# with one without the F flag, which looks the interpreter up inside the
+# chroot ("failed to run command: No such file or directory"), and removes
+# it on shutdown. So: make sure one is registered, and put its interpreter
+# in the chroot too, which works with and without F.
+qemu_ready() {
+    local reg=/proc/sys/fs/binfmt_misc/qemu-aarch64 interp
+    [ "$(uname -m)" = aarch64 ] && return 0
+    if [ ! -f "$reg" ]; then
+        update-binfmts --enable qemu-aarch64 >/dev/null 2>&1 ||
+            systemctl restart systemd-binfmt >/dev/null 2>&1 || true
+    fi
+    if [ ! -f "$reg" ]; then
+        echo "chroot: aarch64 programs cannot run on this machine: install qemu-user-static and binfmt-support" >&2
+        exit 1
+    fi
+    interp=$(sed -n 's/^interpreter //p' "$reg")
+    if [ -x "$interp" ]; then
+        mkdir -p "$ROOT$(dirname "$interp")"
+        cp -f "$interp" "$ROOT$interp"
+    fi
+}
+
 # The chroot exists and runs the Alpine release of ALPINE_BRANCH.
 current() {
     [ -f "$ROOT/etc/alpine-release" ] && [ "$(cut -d. -f1,2 "$ROOT/etc/alpine-release")" = "${ALPINE_BRANCH#v}" ]
@@ -62,6 +86,7 @@ setup() {
     apk=$(echo "$index" | grep -o 'apk-tools-static-[^"]*\.apk' | head -1)
     curl -fsSL "$mirror/main/$arch/$apk" | tar -xz -C "$tmp" 2>/dev/null
     mkdir -p "$ROOT"
+    qemu_ready  # the packages' install scripts run inside the chroot
     "$tmp/sbin/apk.static" --arch aarch64 --root "$ROOT" --initdb --allow-untrusted -U \
         -X "$mirror/main" -X "$mirror/community" \
         add alpine-base $(grep -v '^#' "$DEVICE_DIR/scripts/build-deps.txt")
@@ -74,6 +99,7 @@ setup() {
 
 enter() {
     local astra
+    qemu_ready
     mkdir -p "$ROOT/work/device" "$ROOT/work/astra"
     for fs in proc sys dev; do
         mountpoint -q "$ROOT/$fs" || { mount --rbind "/$fs" "$ROOT/$fs" && mount --make-rslave "$ROOT/$fs"; }
