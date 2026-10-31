@@ -13,7 +13,8 @@ cmake -S "$ASRC" -B "$BUILD" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DASTRA_BUILD_TYPE=userdebug \
     -DASTRA_STATIC_INIT=ON \
-    -DASTRA_BUILD_TESTS=OFF
+    -DASTRA_BUILD_TESTS=OFF \
+    -DASTRA_VERSION_SUFFIX="${ASTRA_VERSION_SUFFIX:-}"
 
 log "astra: building"
 cmake --build "$BUILD" -j "$JOBS"

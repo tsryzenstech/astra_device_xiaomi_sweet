@@ -10,7 +10,9 @@ need zip python3 sha256sum
 [ -f "$OUT/pmos/userdata.img" ] || die "package: no userdata.img, run ./build.sh pmos"
 [ -f "$OUT/u-boot/u-boot.img" ] || die "package: no u-boot.img, run ./build.sh uboot"
 
-version=$(cat "$OUT/pmos/version" 2>/dev/null || echo dev)
+# The astraOS version the phone reports (26.0, or 26.0-rev3 for a pre-release).
+version=$(sed -n 's/^ro.astra.version=//p' "$OUT/astra-install/system/build.prop" 2>/dev/null)
+version=${version:-dev}
 name="astraOS-${version}-${DEVICE}"
 pkg=$OUT/$name
 rm -rf "$pkg" "$pkg.zip"

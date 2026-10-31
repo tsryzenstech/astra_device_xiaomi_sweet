@@ -1,22 +1,104 @@
+# Builds astraOS for sweet and publishes it on GitHub (see astra's
+# docs/VERSIONING.md):
+#
+#   automatic builds -> pre-release "<version>-rev<N>" (26.0-rev1, 26.0-rev2...)
+#     a new astraOS version (astra's "version" workflow sends astra-version;
+#     the scheduled check catches a version that has no build yet), or a
+#     push to this repository
+#   manual builds (Actions > build > Run workflow) -> release "<version>"
+#     ("<version>-rev<N>" once "<version>" exists), marked as the latest
+#
+# The maintainer can also turn a pre-release into a release on GitHub.
+# Every build's zip is also an artifact of its workflow run.
 name: build
 
 on:
   push:
     branches: [main]
-  pull_request:
+    paths-ignore: ["**.md", "LICENSE"]
+  repository_dispatch:
+    types: [astra-version]
+  schedule:
+    - cron: "23 */6 * * *"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
+# One build at a time: each takes the next -rev number.
+concurrency:
+  group: sweet-builds
+  cancel-in-progress: false
+
 jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      build: ${{ steps.plan.outputs.build }}
+      version: ${{ steps.plan.outputs.version }}
+      tag: ${{ steps.plan.outputs.tag }}
+      suffix: ${{ steps.plan.outputs.suffix }}
+      prerelease: ${{ steps.plan.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # A private astra repository needs a token that can read it: add a
+      # fine-grained personal access token as the ASTRA_REPO_TOKEN secret.
+      - uses: actions/checkout@v4
+        with:
+          repository: tsryzenstech/astra
+          path: astra
+          token: ${{ secrets.ASTRA_REPO_TOKEN || github.token }}
+          sparse-checkout: version.json
+          sparse-checkout-cone-mode: false
+      - name: Version and tag
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          version=$(python3 -c '
+          import json
+          v = json.load(open("astra/version.json"))
+          letter = {"alpha": "a", "beta": "b", "delta": "d", "stable": ""}[v["channel"]]
+          print("%s.%s%s" % (v["major"], v["minor"], letter))')
+          git fetch --tags --force -q
+          re=$(printf '%s' "$version" | sed 's/[.]/\\./g')
+          last=$(git tag -l "$version-rev*" | sed -n "s/^$re-rev\([0-9][0-9]*\)\$/\1/p" | sort -n | tail -1)
+          next=$(( ${last:-0} + 1 ))
+          released=$(git tag -l "$version")
+
+          build=true
+          if [ "$EVENT" = schedule ] && { [ -n "$last" ] || [ -n "$released" ]; }; then
+              build=false   # this version has builds already
+          fi
+          if [ "$EVENT" = workflow_dispatch ]; then
+              prerelease=false
+              if [ -z "$released" ]; then tag=$version suffix=""; else tag=$version-rev$next suffix=-rev$next; fi
+          else
+              prerelease=true tag=$version-rev$next suffix=-rev$next
+          fi
+          echo "astraOS $version: build=$build tag=$tag prerelease=$prerelease"
+          {
+              echo "build=$build"
+              echo "version=$version"
+              echo "tag=$tag"
+              echo "suffix=$suffix"
+              echo "prerelease=$prerelease"
+          } >> "$GITHUB_OUTPUT"
+
   sweet:
+    needs: plan
+    if: needs.plan.outputs.build == 'true'
     # Native arm64: astraOS, U-Boot and postmarketOS's chroots run without emulation.
     runs-on: ubuntu-24.04-arm
+    env:
+      ASTRA_VERSION_SUFFIX: ${{ needs.plan.outputs.suffix }}
     steps:
       - uses: actions/checkout@v4
         with:
           path: astra_device_xiaomi_sweet
 
-      # A private astra repository needs a token that can read it: add a
-      # fine-grained personal access token as the ASTRA_REPO_TOKEN secret.
       - uses: actions/checkout@v4
         with:
           repository: tsryzenstech/astra
@@ -38,6 +120,33 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: astraOS-sweet
+          name: astraOS-${{ needs.plan.outputs.tag }}-sweet
           path: astra_device_xiaomi_sweet/out/*.zip
           if-no-files-found: error
+
+      - name: Release notes
+        env:
+          TAG: ${{ needs.plan.outputs.tag }}
+          PRERELEASE: ${{ needs.plan.outputs.prerelease }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          kind="Release"
+          [ "$PRERELEASE" = true ] && kind="Pre-release (delta build)"
+          cat > release.md <<EOF
+          **astraOS $TAG** for the Xiaomi Redmi Note 10 Pro (sweet), on postmarketOS.
+
+          $kind, built by the "$EVENT" event from astra $(git -C astra rev-parse --short HEAD) and astra_device_xiaomi_sweet $(git -C astra_device_xiaomi_sweet rev-parse --short HEAD).
+
+          Unzip, boot the phone into fastboot (Volume down + Power) and run \`flash-all.bat\` (Windows) or \`./flash-all.sh\`. Flashing erases everything on the phone.
+          EOF
+
+      - name: Publish
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.plan.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: astraOS ${{ needs.plan.outputs.tag }} (sweet)
+          body_path: release.md
+          prerelease: ${{ needs.plan.outputs.prerelease == 'true' }}
+          make_latest: ${{ needs.plan.outputs.prerelease == 'true' && 'false' || 'true' }}
+          files: astra_device_xiaomi_sweet/out/*.zip

@@ -88,7 +88,9 @@ printf '%s\n' /lib /usr/local/lib /usr/lib /system/lib > "$tree/etc/ld-musl-aarc
 ln -sfn data/media/0 "$tree/sdcard"
 
 version=$(sed -n 's/^ro.astra.version=//p' "$OUT/astra-install/system/build.prop" 2>/dev/null)
-pkgver="${version:-0.1}_git$(date -u +%Y%m%d%H%M%S)"
+# apk versions have no "-rev3": the package is <version>_git<time>.
+pkgver="${version%%-*}"
+pkgver="${pkgver:-0.1}_git$(date -u +%Y%m%d%H%M%S)"
 depends=$(sed 's/#.*//' "$DEVICE_DIR/pmos/depends.txt" | xargs)
 
 aport=$aports/temp/astraos

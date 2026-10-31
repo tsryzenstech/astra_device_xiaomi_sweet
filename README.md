@@ -111,6 +111,24 @@ in RAM (ramoops, with `ignore_loglevel`): hold **Volume Down** while the
 phone starts for U-Boot's boot menu (also shown when a boot fails), and
 **Show the last boot log** shows the previous boot's.
 
+## Releases
+
+GitHub Actions ([`.github/workflows/build.yml`](.github/workflows/build.yml))
+publishes every build on the repository's Releases page, and as an artifact
+of its workflow run:
+
+- **Pre-releases** ("delta" builds), automatic: `<version>-rev<N>`, e.g.
+  `26.0-rev1`, `26.0-rev2`… N starts at 1 for each astraOS version and
+  grows with each build. A new astraOS version (astra's `version.json`)
+  starts one by itself, as does a push to this repository.
+- **Releases**, by hand: Actions › build › Run workflow. Tagged `<version>`
+  (`26.0`), or `<version>-rev<N>` when that version was released already.
+
+A maintainer can also turn a pre-release into a release on GitHub. The
+phone reports the same version (`26.0-rev2` in Settings). Locally,
+`ASTRA_VERSION_SUFFIX=-rev2 ./build.sh` does the same. See astra's
+[docs/VERSIONING.md](https://github.com/tsryzenstech/astra/blob/main/docs/VERSIONING.md).
+
 ## Flash
 
 Boot the phone into fastboot (Volume down + Power), connect it and run from

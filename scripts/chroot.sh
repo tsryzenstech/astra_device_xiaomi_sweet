@@ -91,6 +91,7 @@ enter() {
     # git must still work in them (safe.directory).
     chroot "$ROOT" /usr/bin/env -i HOME=/root PATH=/usr/sbin:/usr/bin:/sbin:/bin TERM="${TERM:-xterm}" \
         GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0='*' \
+        ASTRA_VERSION_SUFFIX="${ASTRA_VERSION_SUFFIX:-}" \
         ASTRA_SRC=$( [ -d "$ROOT/work/astra/core" ] && echo /work/astra ) JOBS="${JOBS:-$(nproc)}" "$@"
 }
 

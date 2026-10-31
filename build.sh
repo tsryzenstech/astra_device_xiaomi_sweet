@@ -44,7 +44,7 @@ alpine_steps() {
         image=astra-build-sweet
         docker build --platform linux/arm64 -t "$image" .
         mounts=(-v "$PWD:/work/device")
-        env=(-e "HOST_UID=$(id -u)" -e "HOST_GID=$(id -g)")
+        env=(-e "HOST_UID=$(id -u)" -e "HOST_GID=$(id -g)" -e "ASTRA_VERSION_SUFFIX=${ASTRA_VERSION_SUFFIX:-}")
         if [ -d ../astra/core/init ]; then
             mounts+=(-v "$(cd ../astra && pwd):/work/astra")
             env+=(-e ASTRA_SRC=/work/astra)
