@@ -2,3 +2,14 @@
 # among them: on postmarketOS they are OpenRC services (iwd, bluetooth,
 # modemmanager, rmtfs, pd-mapper, tqftpserv).
 ASTRA_RC="/system/etc/init/init.rc /system/etc/init/astrad.rc /system/etc/init/sysboard.rc /system/etc/init/adud.rc /vendor/etc/init"
+
+# Environment of every astraOS service (astraOS's init passes it on).
+#
+# With Mesa 26 (Mesa 25 worked) SysBoard's frames stopped at
+# "dpu_encoder_frame_done_timeout" on sweet's command-mode panel (black
+# screen). Mesa 26's freedreno can give the screen UBWC-compressed buffers:
+# plain ones instead.
+export FD_MESA_DEBUG=noubwc
+# Qt's KMS output in the boot log (U-Boot > Show the last boot log): mode,
+# planes, buffer formats and modifiers, page flips.
+export QT_LOGGING_RULES="qt.qpa.eglfs.kms*=true;qt.qpa.egldeviceintegration=true"
