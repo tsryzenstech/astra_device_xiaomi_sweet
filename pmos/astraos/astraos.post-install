@@ -31,6 +31,17 @@ fi
 mkdir -p /etc/plymouth
 cp /usr/share/astraos/plymouthd.conf /etc/plymouth/plymouthd.conf
 
+# Overrides of postmarketOS's deviceinfo (/etc/deviceinfo belongs to
+# devicepkg-utils): each setting replaces an earlier one with the same name.
+if [ -f /usr/share/astraos/deviceinfo ]; then
+	touch /etc/deviceinfo
+	while IFS= read -r line; do
+		key=${line%%=*}
+		sed -i "/^$key=/d" /etc/deviceinfo
+		echo "$line" >> /etc/deviceinfo
+	done < /usr/share/astraos/deviceinfo
+fi
+
 # No login prompts on the screen: SysBoard owns the display.
 [ -f /etc/inittab ] && sed -i 's/^\(tty[0-9]*::respawn:\)/#\1/' /etc/inittab
 exit 0

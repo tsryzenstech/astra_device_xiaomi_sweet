@@ -99,8 +99,9 @@ fi
 # USB networking (postmarketOS's initramfs sets it up) with the Linux
 # Foundation's IDs for a composite gadget: with Google's (18d1:d001, the
 # default) Windows binds its Android ADB driver and the network never shows.
-cat > "$tree/etc/deviceinfo" <<EOF
-# astraOS: overrides of postmarketOS's deviceinfo for this phone
+# (/etc/deviceinfo belongs to devicepkg-utils: the post-install adds these.)
+mkdir -p "$tree/usr/share/astraos"
+cat > "$tree/usr/share/astraos/deviceinfo" <<EOF
 deviceinfo_usb_idVendor="0x1d6b"
 deviceinfo_usb_idProduct="0x0104"
 EOF
