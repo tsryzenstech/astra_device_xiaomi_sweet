@@ -104,11 +104,12 @@ BlueZ, ModemManager, the Qualcomm modem helpers) and `astraos`: astraOS's
 init as a service supervisor (`init --supervisor`), which starts astrad and
 SysBoard. SysBoard shows the boot logo while the shell loads.
 
-The boot is quiet: `console=null quiet loglevel=3` (`KERNEL_CMDLINE` in
+The boot shows no text: `console=null` (`KERNEL_CMDLINE` in
 [`board.conf`](board.conf)) is added to postmarketOS's command line, and no
-login prompt is shown. Hold **Volume Down** while the phone starts for
-U-Boot's boot menu (also shown when a boot fails), which can show the last
-boot's kernel log.
+login prompt is shown. Every kernel message still goes to the boot log kept
+in RAM (ramoops, with `ignore_loglevel`): hold **Volume Down** while the
+phone starts for U-Boot's boot menu (also shown when a boot fails), and
+**Show the last boot log** shows the previous boot's.
 
 ## Flash
 
