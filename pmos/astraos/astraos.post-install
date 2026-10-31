@@ -26,6 +26,11 @@ if [ -f /system/etc/iwd/main.conf ]; then
 	cp /system/etc/iwd/main.conf /etc/iwd/main.conf
 fi
 
+# The astraOS boot logo is Plymouth's theme (the initramfs gets it when
+# mkinitfs runs after the installation).
+mkdir -p /etc/plymouth
+cp /usr/share/astraos/plymouthd.conf /etc/plymouth/plymouthd.conf
+
 # No login prompts on the screen: SysBoard owns the display.
 [ -f /etc/inittab ] && sed -i 's/^\(tty[0-9]*::respawn:\)/#\1/' /etc/inittab
 exit 0

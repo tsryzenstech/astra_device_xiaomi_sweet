@@ -43,3 +43,6 @@ e2fsprogs
 f2fs-tools
 tzdata
 ca-certificates
+
+# Boot logo (Plymouth, astraOS theme) from the initramfs on
+postmarketos-bootsplash

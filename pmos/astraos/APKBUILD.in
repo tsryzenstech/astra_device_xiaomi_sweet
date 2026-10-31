@@ -19,6 +19,9 @@ source="
 	astraos.confd
 	60-astraos.rules
 	90-astraos.conf
+	astra.plymouth
+	astra.script
+	plymouthd.conf
 "
 builddir="$srcdir"
 
@@ -32,4 +35,12 @@ package() {
 	install -Dm644 "$srcdir"/astraos.confd "$pkgdir"/etc/conf.d/astraos
 	install -Dm644 "$srcdir"/60-astraos.rules -t "$pkgdir"/etc/udev/rules.d
 	install -Dm644 "$srcdir"/90-astraos.conf -t "$pkgdir"/etc/kernel-cmdline.d
+
+	# Boot logo: a Plymouth theme (postmarketos-bootsplash puts
+	# /usr/share/plymouth and /etc/plymouth in the initramfs). The post-install
+	# makes it the theme (/etc/plymouth/plymouthd.conf belongs to plymouth).
+	local theme="$pkgdir"/usr/share/plymouth/themes/astra
+	install -Dm644 "$srcdir"/astra.plymouth "$srcdir"/astra.script -t "$theme"
+	install -Dm644 "$pkgdir"/system/media/bootanimation/logo.png "$theme"/logo.png
+	install -Dm644 "$srcdir"/plymouthd.conf -t "$pkgdir"/usr/share/astraos
 }

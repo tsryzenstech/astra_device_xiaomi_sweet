@@ -97,7 +97,8 @@ aport=$aports/temp/astraos
 rm -rf "$aport"
 mkdir -p "$aport"
 src=$DEVICE_DIR/pmos/astraos
-cp "$src/astraos.initd" "$src/astraos.confd" "$src/astraos.post-install" "$src/60-astraos.rules" "$aport/"
+cp "$src/astraos.initd" "$src/astraos.confd" "$src/astraos.post-install" "$src/60-astraos.rules" \
+   "$src"/plymouth/* "$aport/"
 echo "$KERNEL_CMDLINE" > "$aport/90-astraos.conf"
 sed -e "s|@VERSION@|$pkgver|" -e "s|@DEPENDS@|$depends|" "$src/APKBUILD.in" > "$aport/APKBUILD"
 tar -C "$stage" --owner=0 --group=0 --numeric-owner -czf "$aport/astraos-tree.tar.gz" tree

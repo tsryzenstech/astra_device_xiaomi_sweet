@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=astraOS
+Description=astraOS boot logo
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/astra
+ScriptFile=/usr/share/plymouth/themes/astra/astra.script
