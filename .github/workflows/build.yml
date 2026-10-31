@@ -94,6 +94,8 @@ jobs:
     runs-on: ubuntu-24.04-arm
     env:
       ASTRA_VERSION_SUFFIX: ${{ needs.plan.outputs.suffix }}
+      # Published builds: no SSH key, so nobody can log in to them.
+      ASTRA_DEV_SSH: "0"
     steps:
       - uses: actions/checkout@v4
         with:

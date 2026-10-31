@@ -46,3 +46,6 @@ ca-certificates
 
 # Boot logo (Plymouth, astraOS theme) from the initramfs on
 postmarketos-bootsplash
+
+# SSH over the USB cable, key only (see pmos/astraos/50-astraos.sshd.conf)
+openssh-server

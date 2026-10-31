@@ -19,6 +19,7 @@ source="
 	astraos.confd
 	60-astraos.rules
 	90-astraos.conf
+	50-astraos.sshd.conf
 	astra.plymouth
 	astra.script
 	plymouthd.conf
@@ -35,6 +36,7 @@ package() {
 	install -Dm644 "$srcdir"/astraos.confd "$pkgdir"/etc/conf.d/astraos
 	install -Dm644 "$srcdir"/60-astraos.rules -t "$pkgdir"/etc/udev/rules.d
 	install -Dm644 "$srcdir"/90-astraos.conf -t "$pkgdir"/etc/kernel-cmdline.d
+	install -Dm644 "$srcdir"/50-astraos.sshd.conf "$pkgdir"/etc/ssh/sshd_config.d/50-astraos.conf
 
 	# Boot logo: a Plymouth theme (postmarketos-bootsplash puts
 	# /usr/share/plymouth and /etc/plymouth in the initramfs). The post-install

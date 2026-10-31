@@ -10,7 +10,7 @@
 # and refuses to run as root. Its files live in PMB_HOME (a Linux
 # filesystem: not /mnt/c on WSL).
 source "$(dirname "$0")/common.sh"
-need git python3 sudo openssl tar gzip
+need git python3 sudo openssl tar gzip ssh-keygen
 
 [ "$(id -u)" != 0 ] || die "pmos: run this step as your user, not root (pmbootstrap uses sudo itself)"
 [ -d "$OUT/astra-install/system" ] || die "pmos: astraOS is not built, run ./build.sh astra"
@@ -80,9 +80,22 @@ echo "# product customisations for $DEVICE" > "$tree/product/build.prop"
 # Services started at boot: astraOS and the daemons astrad drives (their
 # OpenRC scripts come with the *-openrc packages). Links instead of
 # rc-update in the post-install: they do not depend on install order.
-for svc in astraos dbus iwd bluetooth modemmanager; do
+for svc in astraos dbus iwd bluetooth modemmanager sshd; do
     ln -sfn "/etc/init.d/$svc" "$tree/etc/runlevels/default/$svc"
 done
+# SSH over the USB cable (root@172.16.42.1), only with this machine's key,
+# for looking into a phone live (passwords are off: 50-astraos.sshd.conf).
+# ASTRA_DEV_SSH=0 (GitHub builds) leaves the key out: nobody can log in.
+if [ "${ASTRA_DEV_SSH:-1}" = 1 ]; then
+    key=$PMB_HOME/ssh/astra_dev
+    if [ ! -f "$key" ]; then
+        mkdir -p "$(dirname "$key")"
+        ssh-keygen -q -t ed25519 -N '' -C "astraOS dev ($(hostname))" -f "$key"
+    fi
+    install -d -m 700 "$tree/root/.ssh"
+    install -m 600 "$key.pub" "$tree/root/.ssh/authorized_keys"
+    log "pmos: SSH over USB: ssh -i $key root@172.16.42.1"
+fi
 # astraOS's libraries (libastra) are in /system/lib.
 printf '%s\n' /lib /usr/local/lib /usr/lib /system/lib > "$tree/etc/ld-musl-aarch64.path"
 ln -sfn data/media/0 "$tree/sdcard"
@@ -98,7 +111,7 @@ rm -rf "$aport"
 mkdir -p "$aport"
 src=$DEVICE_DIR/pmos/astraos
 cp "$src/astraos.initd" "$src/astraos.confd" "$src/astraos.post-install" "$src/60-astraos.rules" \
-   "$src"/plymouth/* "$aport/"
+   "$src/50-astraos.sshd.conf" "$src"/plymouth/* "$aport/"
 echo "$KERNEL_CMDLINE" > "$aport/90-astraos.conf"
 sed -e "s|@VERSION@|$pkgver|" -e "s|@DEPENDS@|$depends|" "$src/APKBUILD.in" > "$aport/APKBUILD"
 tar -C "$stage" --owner=0 --group=0 --numeric-owner -czf "$aport/astraos-tree.tar.gz" tree
@@ -110,11 +123,11 @@ pmb -y build --force --arch aarch64 astraos
 # Sparse: fastboot sends a sparse image in chunks; a raw one of a few GB
 # makes it run out of memory (std::bad_alloc on Windows).
 # The user account's password (pmbootstrap needs one; nothing logs in with it:
-# no SSH server, no login prompt) stays on the build machine.
+# SSH takes keys only, no login prompt) stays on the build machine.
 pwfile=$PMB_HOME/password
 [ -f "$pwfile" ] || (umask 077 && openssl rand -hex 12 > "$pwfile")
 log "pmos: installing postmarketOS $PMOS_CHANNEL ($PMOS_DEVICE) with astraOS"
-pmb -y install --zap --sparse --no-sshd --password "$(cat "$pwfile")" --add astraos
+pmb -y install --zap --sparse --password "$(cat "$pwfile")" --add astraos
 
 # Where pmbootstrap install leaves the image ("pmbootstrap export" would only
 # link to it, after setting the device chroot up again).
