@@ -10,7 +10,7 @@
 # and refuses to run as root. Its files live in PMB_HOME (a Linux
 # filesystem: not /mnt/c on WSL).
 source "$(dirname "$0")/common.sh"
-need git python3 sudo openssl tar gzip ssh-keygen mcopy mdir
+need git python3 sudo openssl tar gzip ssh-keygen mcopy mdir debugfs dd
 
 [ "$(id -u)" != 0 ] || die "pmos: run this step as your user, not root (pmbootstrap uses sudo itself)"
 [ -d "$OUT/astra-install/system" ] || die "pmos: astraOS is not built, run ./build.sh astra"
@@ -96,6 +96,14 @@ if [ "${ASTRA_DEV_SSH:-1}" = 1 ]; then
     install -m 600 "$key.pub" "$tree/root/.ssh/authorized_keys"
     log "pmos: SSH over USB: ssh -i $key root@172.16.42.1"
 fi
+# USB networking (postmarketOS's initramfs sets it up) with the Linux
+# Foundation's IDs for a composite gadget: with Google's (18d1:d001, the
+# default) Windows binds its Android ADB driver and the network never shows.
+cat > "$tree/etc/deviceinfo" <<EOF
+# astraOS: overrides of postmarketOS's deviceinfo for this phone
+deviceinfo_usb_idVendor="0x1d6b"
+deviceinfo_usb_idProduct="0x0104"
+EOF
 # astraOS's libraries (libastra) are in /system/lib.
 printf '%s\n' /lib /usr/local/lib /usr/lib /system/lib > "$tree/etc/ld-musl-aarch64.path"
 ln -sfn data/media/0 "$tree/sdcard"
@@ -161,6 +169,19 @@ else
     missing=$(boot_ok) || die "pmos: the boot partition is still missing $missing"
     log "pmos: boot partition repaired"
 fi
+
+# The root partition must hold the system. An image whose writes got lost
+# has the filesystem's structure and little else (the phone then panics
+# at switch_root: "Attempted to kill init! exitcode=0x7f00").
+read -r root_off root_size < <(python3 "$DEVICE_DIR/scripts/pmos-image.py" part "$raw" 2)
+rootimg=$PMB_HOME/root-check.img
+dd if="$raw" of="$rootimg" bs=4M iflag=skip_bytes,count_bytes skip="$root_off" count="$root_size" conv=sparse status=none
+for f in /usr/bin/busybox /usr/sbin/init /system/bin/init /system/bin/sysboard /etc/init.d/astraos; do
+    debugfs -R "stat $f" "$rootimg" 2>/dev/null | grep -q -E 'Type: (regular|symlink)' ||
+        { rm -f "$rootimg" "$raw"; die "pmos: $f is missing from the image's root partition (run ./build.sh pmos again)"; }
+done
+rm -f "$rootimg"
+log "pmos: root partition complete"
 
 # Sparse: fastboot sends a sparse image in chunks; a raw one of a few GB
 # makes it run out of memory (std::bad_alloc on Windows).

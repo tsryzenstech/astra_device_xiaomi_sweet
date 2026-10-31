@@ -4,6 +4,7 @@
 user (no mounts):
 
   pmos-image.py boot-offset <raw image>     byte offset of the boot (first) partition
+  pmos-image.py part <raw image> <n>        "<offset> <size>" in bytes of partition n (1, 2)
   pmos-image.py sparse <raw image> <out>    Android sparse image, for fastboot
 """
 import struct
@@ -12,8 +13,9 @@ import sys
 BLOCK = 4096
 
 
-def boot_offset(path):
-    """The GPT's first partition, with 4096- or 512-byte sectors."""
+def partition(path, n):
+    """(offset, size) in bytes of the GPT's partition n (from 1), with 4096-
+    or 512-byte sectors."""
     with open(path, "rb") as f:
         for ss in (4096, 512):
             f.seek(ss)
@@ -21,10 +23,15 @@ def boot_offset(path):
             if hdr[:8] != b"EFI PART":
                 continue
             entries_lba, = struct.unpack("<Q", hdr[72:80])
-            f.seek(entries_lba * ss)
-            first, = struct.unpack("<Q", f.read(128)[32:40])
-            return first * ss
+            entry_size, = struct.unpack("<I", hdr[84:88])
+            f.seek(entries_lba * ss + (n - 1) * entry_size)
+            first, last = struct.unpack("<QQ", f.read(entry_size)[32:48])
+            return first * ss, (last - first + 1) * ss
     sys.exit("no GPT in " + path)
+
+
+def boot_offset(path):
+    return partition(path, 1)[0]
 
 
 def sparse(path, out):
@@ -67,6 +74,8 @@ def sparse(path, out):
 if __name__ == "__main__":
     if len(sys.argv) == 3 and sys.argv[1] == "boot-offset":
         print(boot_offset(sys.argv[2]))
+    elif len(sys.argv) == 4 and sys.argv[1] == "part":
+        print(*partition(sys.argv[2], int(sys.argv[3])))
     elif len(sys.argv) == 4 and sys.argv[1] == "sparse":
         sparse(sys.argv[2], sys.argv[3])
     else:
