@@ -10,7 +10,7 @@
 # and refuses to run as root. Its files live in PMB_HOME (a Linux
 # filesystem: not /mnt/c on WSL).
 source "$(dirname "$0")/common.sh"
-need git python3 sudo openssl tar gzip ssh-keygen mcopy mdir debugfs dd
+need git python3 sudo openssl tar gzip ssh-keygen mcopy mdir debugfs dd curl
 
 [ "$(id -u)" != 0 ] || die "pmos: run this step as your user, not root (pmbootstrap uses sudo itself)"
 [ -d "$OUT/astra-install/system" ] || die "pmos: astraOS is not built, run ./build.sh astra"
@@ -114,6 +114,37 @@ version=$(sed -n 's/^ro.astra.version=//p' "$OUT/astra-install/system/build.prop
 pkgver="${version%%-*}"
 pkgver="${pkgver:-0.1}_git$(date -u +%Y%m%d%H%M%S)"
 depends=$(sed 's/#.*//' "$DEVICE_DIR/pmos/depends.txt" | xargs)
+
+# ---- Mesa (see MESA_PIN_BRANCH in board.conf) ---------------------------------
+# Alpine's packages of that Mesa go into pmbootstrap's local repository
+# (Alpine's signatures, which pmbootstrap trusts) and astraos requires
+# exactly that version, so the installation takes them.
+if [ -n "$MESA_PIN_BRANCH" ]; then
+    log "pmos: Mesa $MESA_PIN_VERSION from Alpine $MESA_PIN_BRANCH"
+    pin=$PMB_HOME/pinned-$MESA_PIN_BRANCH
+    mkdir -p "$pin"
+    for p in mesa mesa-dri-gallium mesa-egl mesa-gbm mesa-gles; do
+        echo "$p-$MESA_PIN_VERSION"
+    done > "$pin/list"
+    printf '%s\n' $MESA_PIN_EXTRA >> "$pin/list"
+    while read -r p; do
+        [ -s "$pin/$p.apk" ] && continue
+        for r in main community; do
+            curl -fsSL -o "$pin/$p.apk.part" "$ALPINE_MIRROR/$MESA_PIN_BRANCH/$r/aarch64/$p.apk" 2>/dev/null &&
+                mv "$pin/$p.apk.part" "$pin/$p.apk" && break
+        done
+        [ -s "$pin/$p.apk" ] || die "pmos: $p.apk is not in Alpine $MESA_PIN_BRANCH (update MESA_PIN_* in board.conf)"
+    done < "$pin/list"
+    repo=$WORK/packages/$PMOS_CHANNEL/aarch64
+    sudo mkdir -p "$repo"
+    owner=$(stat -c %u:%g "$WORK/packages" 2>/dev/null || echo 12345:12345)
+    sudo cp "$pin"/*.apk "$repo/"
+    sudo chown -R "$owner" "$WORK/packages"
+    pmb index
+    depends=$(for d in $depends; do
+        case "$d" in mesa|mesa-*) echo "$d=$MESA_PIN_VERSION" ;; *) echo "$d" ;; esac
+    done | xargs)
+fi
 
 aport=$aports/temp/astraos
 rm -rf "$aport"

@@ -78,12 +78,16 @@ a time: `./build.sh fetch uboot astra llama pmos package`.
 4. **llama** – llama.cpp's server for Cloudy, the on-device assistant.
 5. **pmos** – with [pmbootstrap](https://gitlab.nura.eco/nura/pmbootstrap)
    (`PMB_REF`): postmarketOS `PMOS_CHANNEL` for `qcom-sm7150`, UI `none`,
-   OpenRC, no SSH server, plus the `astraos` package
+   OpenRC, SSH with keys only, plus the `astraos` package
    ([`pmos/astraos`](pmos/astraos)): astraOS's `/system` tree, `/vendor`
    ([`rootdir/vendor`](rootdir/vendor)), the OpenRC service, udev rules and
    kernel command line, with the dependencies in
-   [`pmos/depends.txt`](pmos/depends.txt). pmbootstrap keeps its files in
-   `~/.local/share/astra-pmbootstrap` (`PMB_HOME`).
+   [`pmos/depends.txt`](pmos/depends.txt). **Mesa is pinned** to 25.1.9 from
+   Alpine v3.22 (`MESA_PIN_*` in [`board.conf`](board.conf)): v3.24's Mesa
+   26.1.6 crashes on this phone's Adreno 618 compiling any shader. The
+   build checks the image's boot and root partitions before using it.
+   pmbootstrap keeps its files in `~/.local/share/astra-pmbootstrap`
+   (`PMB_HOME`).
 6. **package** – zip with the images and the flashing scripts.
 
 Steps 1–4 run in the Alpine aarch64 chroot of
