@@ -10,7 +10,7 @@
 # and refuses to run as root. Its files live in PMB_HOME (a Linux
 # filesystem: not /mnt/c on WSL).
 source "$(dirname "$0")/common.sh"
-need git python3 sudo openssl tar gzip ssh-keygen
+need git python3 sudo openssl tar gzip ssh-keygen mcopy mdir
 
 [ "$(id -u)" != 0 ] || die "pmos: run this step as your user, not root (pmbootstrap uses sudo itself)"
 [ -d "$OUT/astra-install/system" ] || die "pmos: astraOS is not built, run ./build.sh astra"
@@ -120,20 +120,51 @@ pmb -y checksum astraos
 pmb -y build --force --arch aarch64 astraos
 
 # ---- Install -------------------------------------------------------------------
-# Sparse: fastboot sends a sparse image in chunks; a raw one of a few GB
-# makes it run out of memory (std::bad_alloc on Windows).
 # The user account's password (pmbootstrap needs one; nothing logs in with it:
 # SSH takes keys only, no login prompt) stays on the build machine.
 pwfile=$PMB_HOME/password
 [ -f "$pwfile" ] || (umask 077 && openssl rand -hex 12 > "$pwfile")
+# pmbootstrap leaves its chroots, mounts and loop devices active after each
+# command. Stale binds of the loop partitions (/dev/loop0p1, installp1) made
+# an image whose boot partition was formatted but empty - nothing to start:
+# begin from none.
+pmb shutdown
 log "pmos: installing postmarketOS $PMOS_CHANNEL ($PMOS_DEVICE) with astraOS"
-pmb -y install --zap --sparse --password "$(cat "$pwfile")" --add astraos
+pmb -y install --zap --password "$(cat "$pwfile")" --add astraos
+pmb shutdown
 
-# Where pmbootstrap install leaves the image ("pmbootstrap export" would only
-# link to it, after setting the device chroot up again).
+# Where pmbootstrap install leaves the (raw) image.
 mkdir -p "$OUT/pmos"
 img=$WORK/chroot_native/home/pmos/rootfs/$PMOS_DEVICE.img
+raw=$OUT/pmos/raw.img
 [ -e "$img" ] || die "pmos: pmbootstrap did not produce $PMOS_DEVICE.img"
-cp -L "$img" "$OUT/pmos/userdata.img" 2>/dev/null || { sudo cp -L "$img" "$OUT/pmos/userdata.img" && sudo chown "$(id -u):$(id -g)" "$OUT/pmos/userdata.img"; }
+cp --sparse=always "$img" "$raw" 2>/dev/null ||
+    { sudo cp --sparse=always "$img" "$raw" && sudo chown "$(id -u):$(id -g)" "$raw"; }
+
+# The boot partition must hold what U-Boot starts: systemd-boot, the kernel,
+# the initramfs and the boot entry. Copied in again (mtools, no mount) from
+# the device's /boot when they are missing; the build fails if they still are.
+export MTOOLS_SKIP_CHECK=1
+fat="$raw@@$(python3 "$DEVICE_DIR/scripts/pmos-image.py" boot-offset "$raw")"
+boot_ok() {
+    local f
+    for f in EFI/BOOT/BOOTAA64.EFI vmlinuz initramfs loader/entries/pmos.conf; do
+        mdir -b -i "$fat" "::/$f" >/dev/null 2>&1 || { echo "$f"; return 1; }
+    done
+}
+if missing=$(boot_ok); then
+    log "pmos: boot partition complete"
+else
+    warn "pmos: $missing is missing from the boot partition: copying /boot into it"
+    rootfs_boot=$WORK/chroot_rootfs_$PMOS_DEVICE/boot
+    mcopy -s -o -i "$fat" "$rootfs_boot"/* ::/
+    missing=$(boot_ok) || die "pmos: the boot partition is still missing $missing"
+    log "pmos: boot partition repaired"
+fi
+
+# Sparse: fastboot sends a sparse image in chunks; a raw one of a few GB
+# makes it run out of memory (std::bad_alloc on Windows).
+python3 "$DEVICE_DIR/scripts/pmos-image.py" sparse "$raw" "$OUT/pmos/userdata.img"
+rm -f "$raw"
 echo "$pkgver" > "$OUT/pmos/version"
 log "pmos: $OUT/pmos/userdata.img ($(du -h "$OUT/pmos/userdata.img" | cut -f1))"

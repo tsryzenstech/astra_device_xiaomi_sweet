@@ -39,7 +39,7 @@ contributors (mainline Linux, U-Boot and firmware for these phones), and to
 
 - An **unlocked bootloader** (Xiaomi unlock tool).
 - To build: Linux or WSL2 with `sudo`, `git`, `python3`, `openssl`, `zip`,
-  `kpartx`, `losetup`; on x86_64 also `qemu-user-static` + `binfmt-support`
+  `kpartx`, `losetup`, `mtools`; on x86_64 also `qemu-user-static` + `binfmt-support`
   (the astraOS steps run in an Alpine aarch64 chroot). Docker can replace
   the chroot (`--docker`). GitHub Actions builds it on native arm64 runners
   (`.github/workflows/build.yml`).
