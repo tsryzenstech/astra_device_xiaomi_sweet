@@ -60,9 +60,10 @@ qemu_ready() {
     fi
 }
 
-# The chroot exists and runs the Alpine release of ALPINE_BRANCH.
+# The chroot was set up to the end, for the Alpine release of ALPINE_BRANCH:
+# an interrupted setup leaves Alpine's files without the installed packages.
 current() {
-    [ -f "$ROOT/etc/alpine-release" ] && [ "$(cut -d. -f1,2 "$ROOT/etc/alpine-release")" = "${ALPINE_BRANCH#v}" ]
+    [ "$(cat "$ROOT/.astra-ready" 2>/dev/null)" = "$ALPINE_BRANCH" ]
 }
 
 setup() {
@@ -91,8 +92,8 @@ setup() {
         add alpine-base $(grep -v '^#' "$DEVICE_DIR/scripts/build-deps.txt")
     printf '%s\n' "$mirror/main" "$mirror/community" > "$ROOT/etc/apk/repositories"
     ln -sf /usr/bin/samu "$ROOT/usr/bin/ninja"
-    cp /etc/resolv.conf "$ROOT/etc/resolv.conf"
     rm -rf "$tmp"
+    echo "$ALPINE_BRANCH" > "$ROOT/.astra-ready"
     echo "chroot ready: $ROOT"
 }
 
@@ -108,8 +109,10 @@ enter() {
     [ -d "$astra/core/init" ] && { mountpoint -q "$ROOT/work/astra" || mount --bind "$astra" "$ROOT/work/astra"; }
     # Unmount, and give the build output back to the user who ran sudo.
     trap 'unmount; [ -n "${SUDO_UID:-}" ] && chown -R "$SUDO_UID:${SUDO_GID:-$SUDO_UID}" "$DEVICE_DIR/out" "$DEVICE_DIR/cache/src" 2>/dev/null; true' EXIT
+    # The machine's DNS servers today (WSL's can change between restarts).
+    cp -L /etc/resolv.conf "$ROOT/etc/resolv.conf"
     # Build dependencies added since the chroot was set up.
-    chroot "$ROOT" /sbin/apk add --quiet $(grep -v '^#' "$DEVICE_DIR/scripts/build-deps.txt") >/dev/null 2>&1 ||
+    chroot "$ROOT" /sbin/apk add --quiet $(grep -v '^#' "$DEVICE_DIR/scripts/build-deps.txt") >/dev/null ||
         echo "chroot: could not update the build dependencies (offline?)" >&2
     # The source trees belong to the user who runs the build, not to root:
     # git must still work in them (safe.directory).
