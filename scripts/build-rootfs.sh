@@ -55,6 +55,9 @@ if [ -d "$SYSTEM_ROOT/system/sbin" ]; then
     cp -a "$SYSTEM_ROOT/system/sbin/." "$SYSTEM_ROOT/system/bin/"
     rm -rf "$SYSTEM_ROOT/system/sbin"
 fi
+# Alpine's sbin/udevadm is a link to /bin/udevadm: copied over the program, it
+# would be a link to itself here, where /bin is this folder.
+cp -a --remove-destination "$STAGE/bin/udevadm" "$SYSTEM_ROOT/system/bin/udevadm"
 ln -s bin "$SYSTEM_ROOT/system/sbin"
 cp -a "$STAGE/etc/." "$SYSTEM_ROOT/system/etc/"
 # No package manager on the device: the system partition is read-only.

@@ -76,6 +76,43 @@ def readelf(path, what):
     return run("readelf", "-W", what, str(path)).stdout
 
 
+class LinkLoop(Exception):
+    pass
+
+
+def on_phone(path):
+    """What a path of /system leads to on the phone, or None.
+
+    Absolute links start at the image's root, not at the build machine's.
+    """
+    parts = list(Path(path).relative_to(SYSTEM).parts)
+    current, hops = SYSTEM, 0
+    while parts:
+        part = parts.pop(0)
+        if part == "..":
+            current = current.parent if current != SYSTEM else SYSTEM
+            continue
+        next_path = current / part
+        if not next_path.is_symlink():
+            current = next_path
+            continue
+        hops += 1
+        if hops > 40:
+            raise LinkLoop(str(path))
+        target = os.readlink(next_path)
+        if target.startswith("/"):
+            current = SYSTEM
+        parts[:0] = [p for p in target.split("/") if p and p != "."]
+    return current if os.path.lexists(current) else None
+
+
+def in_image(path):
+    try:
+        return on_phone(path) is not None
+    except LinkLoop:
+        return False
+
+
 # ---- Pinned inputs ----------------------------------------------------------
 
 def check_pins():
@@ -159,14 +196,41 @@ def check_layout():
                 "qt6/plugins/platforms/libqoffscreen.so",
                 "qt6/plugins/egldeviceintegrations/libqeglfs-kms-integration.so",
                 "qt6/libexec/QtWebEngineProcess"):
-        check((LIB / rel).exists(), "/system/lib/" + rel)
+        check(in_image(LIB / rel), "/system/lib/" + rel)
     for rel in ("bin/sysboard", "bin/astrad", "bin/bootanim", "bin/udevd", "bin/udevadm", "build.prop",
                 "etc/init/init.rc", "etc/init/sysboard.rc", "etc/init/astrad.rc", "etc/init/bootanim.rc",
                 "etc/passwd", "etc/group"):
-        check((SYSTEM / "system" / rel).exists(), "/system/" + rel)
+        check(in_image(SYSTEM / "system" / rel), "/system/" + rel)
+    # What booted on the phone never ran it (udevadm was a link to itself).
+    rc = (SYSTEM / "system/etc/init/init.rc").read_text()
+    check("udevadm trigger" not in rc.replace('"udevadm trigger"', ""), "init.rc does not load every module at once",
+          "astra is older than this repository expects, or this was not tested on the phone")
     for d in ("app", "priv-app"):
         n = sum(1 for _ in (SYSTEM / "system" / d).iterdir()) if (SYSTEM / "system" / d).is_dir() else 0
         check(n > 0, "/system/%s has %d apps" % (d, n))
+
+
+def check_links():
+    """No link in /system leads back to itself; broken ones are reported."""
+    count, loops, broken = 0, [], []
+    for root, dirs, files in os.walk(SYSTEM / "system"):
+        for name in dirs + files:
+            path = Path(root) / name
+            if not path.is_symlink():
+                continue
+            count += 1
+            rel = "/" + str(path.relative_to(SYSTEM))
+            try:
+                if on_phone(path) is None:
+                    target = os.readlink(path)
+                    # Made at runtime.
+                    if not target.startswith(("/run/", "/proc/", "/dev/", "/tmp/", "/data/")):
+                        broken.append("%s -> %s" % (rel, target))
+            except LinkLoop:
+                loops.append("%s -> %s" % (rel, os.readlink(path)))
+    check(not loops, "none of the %d links in /system leads back to itself" % count, ", ".join(loops[:30]))
+    if broken:
+        warn("%d broken links: %s" % (len(broken), ", ".join(broken[:15])))
 
 
 def is_elf(path):
@@ -216,7 +280,7 @@ def check_elfs():
             for m in re.finditer(r"\((?:RUNPATH|RPATH)\)\s+Library r(?:un)?path: \[(.*?)\]", dynamic):
                 search += resolve_runpath(m.group(1), path)
             for need in re.findall(r"\(NEEDED\)\s+Shared library: \[(.*?)\]", dynamic):
-                if not any((d / need).exists() for d in search):
+                if not any(in_image(d / need) for d in search):
                     missing.append("%s needs %s" % (rel, need))
     check(not wrong, "%d programs and libraries are all aarch64" % count, ", ".join(wrong[:20]))
     check(not missing, "every library they need is in the image",
@@ -410,7 +474,7 @@ def check_sysboard_starts():
 
 
 def main():
-    for step in (check_pins, check_packages, check_layout, check_elfs, check_qml_imports, check_rc,
+    for step in (check_pins, check_packages, check_layout, check_links, check_elfs, check_qml_imports, check_rc,
                  check_firmware, check_efi, check_images, check_sysboard_starts):
         report.append("--- " + step.__name__[len("check_"):])
         try:
