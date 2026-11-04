@@ -3,3 +3,4 @@
 *.rc text eol=lf
 fstab text eol=lf
 *.bat text eol=crlf
+*.apk binary

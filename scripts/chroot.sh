@@ -3,14 +3,13 @@
 #
 # Runs build steps inside an Alpine aarch64 chroot, for hosts without Docker
 # (e.g. WSL). Needs root; on non-arm64 hosts also qemu-user-static + binfmt.
-# build.sh calls it for the Alpine steps (fetch uboot astra llama).
+# build.sh calls it for every step.
 #
 #   sudo scripts/chroot.sh setup              create cache/chroot (again)
 #   sudo scripts/chroot.sh build [steps...]   run ./build.sh inside it
 #   sudo scripts/chroot.sh shell              interactive shell
 #
-# The chroot follows ALPINE_BRANCH (the Alpine release postmarketOS is
-# based on): one of another release is made again.
+# The chroot follows ALPINE_BRANCH: one of another release is made again.
 set -euo pipefail
 DEVICE_DIR=$(cd "$(dirname "$0")/.." && pwd)
 source "$DEVICE_DIR/board.conf"
@@ -38,11 +37,11 @@ unmount() {
 }
 
 # On non-arm64 hosts the chroot's programs run through qemu-user, registered
-# in binfmt_misc. pmbootstrap (the pmos step) replaces that registration
-# with one without the F flag, which looks the interpreter up inside the
-# chroot ("failed to run command: No such file or directory"), and removes
-# it on shutdown. So: make sure one is registered, and put its interpreter
-# in the chroot too, which works with and without F.
+# in binfmt_misc. Other tools replace that registration with one without the
+# F flag, which looks the interpreter up inside the chroot ("failed to run
+# command: No such file or directory"), or remove it. So: make sure one is
+# registered, and put its interpreter in the chroot too, which works with
+# and without F.
 qemu_ready() {
     local reg=/proc/sys/fs/binfmt_misc/qemu-aarch64 interp
     [ "$(uname -m)" = aarch64 ] && return 0
@@ -107,8 +106,7 @@ enter() {
     mountpoint -q "$ROOT/work/device" || mount --bind "$DEVICE_DIR" "$ROOT/work/device"
     astra=${ASTRA_SRC:-$DEVICE_DIR/../astra}
     [ -d "$astra/core/init" ] && { mountpoint -q "$ROOT/work/astra" || mount --bind "$astra" "$ROOT/work/astra"; }
-    # Unmount, and give the build output back to the user who ran sudo
-    # (the pmos and package steps run as that user).
+    # Unmount, and give the build output back to the user who ran sudo.
     trap 'unmount; [ -n "${SUDO_UID:-}" ] && chown -R "$SUDO_UID:${SUDO_GID:-$SUDO_UID}" "$DEVICE_DIR/out" "$DEVICE_DIR/cache/src" 2>/dev/null; true' EXIT
     # Build dependencies added since the chroot was set up.
     chroot "$ROOT" /sbin/apk add --quiet $(grep -v '^#' "$DEVICE_DIR/scripts/build-deps.txt") >/dev/null 2>&1 ||

@@ -10,29 +10,42 @@ source "$DEVICE_DIR/board.conf"
 OUT=${OUT:-$DEVICE_DIR/out}
 CACHE=${CACHE:-$DEVICE_DIR/cache}
 SRC=$CACHE/src
+STAGE=$OUT/stage            # Alpine packages as installed by apk
+SYSTEM_ROOT=$OUT/system     # contents of system.img (system-as-root)
+VENDOR_ROOT=$OUT/vendor     # contents of vendor.img
+PRODUCT_ROOT=$OUT/product   # contents of product.img
+RAMDISK=$OUT/ramdisk
+IMAGES=$OUT/images
 JOBS=${JOBS:-$(nproc)}
 
-mkdir -p "$OUT" "$CACHE" "$SRC" 2>/dev/null || true
+mkdir -p "$OUT" "$CACHE" "$SRC" "$IMAGES" 2>/dev/null || true
 
 log() { printf '\033[1;35m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33mwarning:\033[0m %s\n' "$*" >&2; }
-die() { printf '\033[1;31merror:\033[0m %s\n' "$*" >&2; exit 1; }
+die() {
+    printf '\033[1;31merror:\033[0m %s\n' "$*" >&2
+    [ -z "${GITHUB_ACTIONS:-}" ] || echo "::error::$*"
+    exit 1
+}
 
 need() {
     for tool in "$@"; do
-        command -v "$tool" >/dev/null 2>&1 || die "missing tool: $tool (see README, Building)"
+        command -v "$tool" >/dev/null 2>&1 || die "missing tool: $tool (run inside the build container, see README)"
     done
 }
 
-# git_fetch <url> <ref> <dir>: shallow clone or update a source tree.
+# git_fetch <url> <ref> <dir>: shallow clone or update a source tree. The ref
+# can be a branch, a tag or a full commit hash.
 git_fetch() {
     local url=$1 ref=$2 dir=$3
-    if [ -d "$dir/.git" ]; then
-        git -C "$dir" fetch --depth 1 origin "$ref"
-        git -C "$dir" checkout -q FETCH_HEAD
-    else
-        git clone --depth 1 --branch "$ref" "$url" "$dir"
+    if [ ! -d "$dir/.git" ]; then
+        rm -rf "$dir"
+        git init -q "$dir"
+        git -C "$dir" remote add origin "$url"
     fi
+    git -C "$dir" remote set-url origin "$url"
+    git -C "$dir" fetch --depth 1 origin "$ref"
+    git -C "$dir" checkout -q FETCH_HEAD
 }
 
 astra_source() {
@@ -49,4 +62,15 @@ astra_source() {
 # True inside the Alpine aarch64 build environment (Docker image or chroot).
 in_build_env() {
     [ -f /etc/alpine-release ] && [ "$(uname -m)" = aarch64 ]
+}
+
+kernel_release() {
+    cat "$OUT/kernel/include/config/kernel.release"
+}
+
+# Size in MiB of a directory plus headroom, rounded up to 4 MiB.
+image_size_mb() {
+    local kb
+    kb=$(du -sk "$1" | cut -f1)
+    echo $(( (kb / 1024 + IMAGE_HEADROOM_MB + kb / 1024 / 8 + 3) / 4 * 4 ))
 }

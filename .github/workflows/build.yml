@@ -90,12 +90,10 @@ jobs:
   sweet:
     needs: plan
     if: needs.plan.outputs.build == 'true'
-    # Native arm64: astraOS, U-Boot and postmarketOS's chroots run without emulation.
+    # Native arm64: Alpine's aarch64 build image runs without emulation.
     runs-on: ubuntu-24.04-arm
     env:
       ASTRA_VERSION_SUFFIX: ${{ needs.plan.outputs.suffix }}
-      # Published builds: no SSH key, so nobody can log in to them.
-      ASTRA_DEV_SSH: "0"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -107,18 +105,17 @@ jobs:
           path: astra
           token: ${{ secrets.ASTRA_REPO_TOKEN || github.token }}
 
-      # astraOS and U-Boot in the Alpine image, then postmarketOS with
-      # pmbootstrap on the runner (it needs sudo, kpartx and losetup).
-      - name: Build astraOS and U-Boot
+      # Stops before packaging when scripts/verify.py finds a problem.
+      - name: Build and verify
         working-directory: astra_device_xiaomi_sweet
-        run: ./build.sh --docker fetch uboot astra llama
+        run: ./build.sh --docker all
 
-      - name: Install pmbootstrap's requirements
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends kpartx zip mtools
-
-      - name: Build the postmarketOS image and the package
+      - name: Verification report
+        if: always()
         working-directory: astra_device_xiaomi_sweet
-        run: ./build.sh pmos package
+        run: |
+          [ -f out/verify.txt ] || exit 0
+          { echo '```'; cat out/verify.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -135,11 +132,18 @@ jobs:
           kind="Release"
           [ "$PRERELEASE" = true ] && kind="Pre-release (delta build)"
           cat > release.md <<EOF
-          **astraOS $TAG** for the Xiaomi Redmi Note 10 Pro (sweet), on postmarketOS.
+          **astraOS $TAG** for the Xiaomi Redmi Note 10 Pro (sweet).
 
           $kind, built by the "$EVENT" event from astra $(git -C astra rev-parse --short HEAD) and astra_device_xiaomi_sweet $(git -C astra_device_xiaomi_sweet rev-parse --short HEAD).
 
-          Unzip, boot the phone into fastboot (Volume down + Power) and run \`flash-all.bat\` (Windows) or \`./flash-all.sh\`. Flashing erases everything on the phone.
+          Unzip, boot the phone into fastboot (Volume down + Power) and run \`flash-all.bat --wipe\` (Windows) or \`./flash-all.sh --wipe\` for a first install: it erases everything on the phone. Without \`--wipe\` it updates and keeps your data.
+
+          <details><summary>Build verification</summary>
+
+          \`\`\`
+          $(cat astra_device_xiaomi_sweet/out/verify.txt)
+          \`\`\`
+          </details>
           EOF
 
       - name: Publish

@@ -1,8 +1,12 @@
 # Alpine packages needed to build astraOS for sweet (Docker image and chroot).
-bash coreutils findutils diffutils grep sed gawk xz gzip zstd tar zip git python3 perl curl
+bash coreutils findutils diffutils grep sed gawk xz gzip zstd tar zip cpio git python3 perl curl
 build-base linux-headers cmake samurai pkgconf
-qt6-qtbase-dev qt6-qtbase-private-dev qt6-qtdeclarative-dev qt6-qtwayland-dev qt6-qtsvg-dev
-qt6-qtmultimedia-dev qt6-qtshadertools-dev qt6-qtwebengine-dev
-libdrm-dev libpng-dev zlib-dev
-# U-Boot (scripts/build-uboot.sh)
-bc bison flex openssl-dev gnutls-dev util-linux-dev py3-elftools py3-setuptools dtc android-tools
+bc bison flex openssl-dev elfutils-dev kmod
+# astraOS is built against the Qt the image ships (see packages.lock).
+qt6-qtbase-dev=6.8.3-r0 qt6-qtbase-private-dev=6.8.3-r0 qt6-qtdeclarative-dev=6.8.3-r0
+qt6-qtwayland-dev=6.8.3-r0 qt6-qtsvg-dev=6.8.3-r0 qt6-qtmultimedia-dev=6.8.3-r0
+qt6-qtshadertools-dev=6.8.3-r0 qt6-qtwebengine-dev=6.8.3-r6
+libdrm-dev=2.4.124-r0 libpng-dev zlib-dev
+e2fsprogs e2fsprogs-extra android-tools
+dosfstools mtools ukify systemd-efistub
+gnutls-dev util-linux-dev py3-elftools py3-setuptools dtc

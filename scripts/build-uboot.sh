@@ -13,11 +13,9 @@ if [ -z "$UBOOT_REPO" ]; then
     warn "u-boot: UBOOT_REPO is empty: no u-boot.img"
     exit 0
 fi
-git ls-remote --exit-code "$UBOOT_REPO" "$UBOOT_REF" >/dev/null 2>&1 ||
-    die "u-boot: $UBOOT_REPO ($UBOOT_REF) is not reachable"
 src=$SRC/u-boot
 log "u-boot: $UBOOT_REPO ($UBOOT_REF)"
-git_fetch "$UBOOT_REPO" "$UBOOT_REF" "$src"
+git_fetch "$UBOOT_REPO" "$UBOOT_REF" "$src" || die "u-boot: $UBOOT_REPO ($UBOOT_REF) is not reachable"
 
 build=$OUT/u-boot-build
 umake() { make -C "$src" O="$build" ${CROSS_COMPILE:+CROSS_COMPILE=$CROSS_COMPILE} "$@"; }
