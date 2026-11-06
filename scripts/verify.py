@@ -25,6 +25,8 @@ import tempfile
 import zlib
 from pathlib import Path
 
+import dtbfix
+
 env = os.environ
 OUT = Path(env["OUT"])
 SYSTEM = Path(env["SYSTEM_ROOT"])
@@ -398,6 +400,11 @@ def check_efi():
     kboot = OUT / "kernel/arch/arm64/boot"
     dtb = kboot / "dts" / env["KERNEL_DTB"]
     check(dtb.is_file() and b"xiaomi,sweet" in dtb.read_bytes(), "device tree is sweet's")
+    # Without this the first touch freezes the phone: see dtbfix.py.
+    tree = dtb.read_bytes()
+    left, votes = dtbfix.wrong(tree), dtbfix.qup1_votes(tree)
+    check(not left and votes > 0, "QUP1 and the SD card vote on the right interconnect",
+          "%d wrong, %d right" % (len(left), votes))
     image = (OUT / "Image").read_bytes()
     check(image[0x38:0x3c] == b"ARMd", "kernel is an arm64 Image")
 

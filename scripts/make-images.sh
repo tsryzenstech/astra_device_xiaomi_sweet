@@ -6,6 +6,9 @@ need mke2fs mkbootimg lpmake avbtool python3
 
 KOUT=$OUT/kernel/arch/arm64/boot
 
+# Before anything uses the device tree: see the script for what it corrects.
+python3 "$DEVICE_DIR/scripts/dtbfix.py" "$KOUT/dts/$KERNEL_DTB"
+
 mkext4() {
     local name=$1 dir=$2 size
     size=$(image_size_mb "$dir")

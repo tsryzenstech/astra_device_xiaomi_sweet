@@ -31,8 +31,14 @@ board, which an erased partition avoids.
 >   one the kernel's DSI driver sends. Until the driver can do it, `disptest
 >   setreg` writes the register from userspace; the proper fix is a kernel patch.
 > - **120 Hz only**, because a modeset to another rate resets that register. With
->   all the drivers loaded, modesets and blanking the framebuffer also freeze the
->   phone.
+>   all the drivers loaded, modesets and blanking the framebuffer also froze the
+>   phone (seen before the interconnect correction below; not tried again since).
+> - **A corrected device tree**, [`dtbfix.py`](scripts/dtbfix.py). `sm7150.dtsi`
+>   names QUP1's interconnect endpoint on the wrong provider, so nothing keeps
+>   QUP1's bus clock on once `sync_state` has dropped the bootloader's votes: the
+>   first access to i2c7, where the touchscreen is, stopped the CPU. The first touch
+>   froze the phone. Tried on the phone: the touch works with the correction, with
+>   nothing else changed. It belongs upstream in the kernel's device tree.
 >
 > Not working yet: Bluetooth (the kernel asks for `qca/crbtfw01.tlv`, which is not
 > in `linux-firmware`), audio, camera, fingerprint.
