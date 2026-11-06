@@ -1,4 +1,5 @@
-# The Alpine v3.22 packages of the astraOS build tested on the phone.
+# The Alpine v3.22 packages of an earlier astraOS build, pinned so that two
+# builds are the same. This set has not shown a user interface on the phone.
 # "critical" (graphics, Qt, libc, firmware): installed at exactly this
 # version, or the build stops. The others follow Alpine's security updates;
 # scripts/verify.py reports the ones that differ.

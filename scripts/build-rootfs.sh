@@ -33,8 +33,8 @@ while read -r line; do
     [ -z "$line" ] && continue
     if [[ $line == \?* ]]; then optional+=("${line#?}"); else required+=("$line"); fi
 done < "$DEVICE_DIR/packages.txt"
-# The versions tested on the phone: when one is no longer on the mirror, apk
-# stops the build here instead of shipping an untested graphics stack.
+# The pinned versions: when one is no longer on the mirror, apk stops the build
+# here instead of changing the graphics stack by itself.
 while read -r pkg mark; do
     if [ "$mark" = critical ]; then required+=("$pkg"); fi
 done < "$DEVICE_DIR/packages.lock"

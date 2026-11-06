@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-"""Stops the build when the images differ from what booted on the phone.
+"""Stops the build when the images are not what this repository describes.
 
 Checks everything that can be checked without the phone: the pinned kernel,
 bootloader, firmware and packages, that every program finds its libraries and
@@ -8,7 +8,8 @@ every QML import its module, and that the images hold what the boot chain
 reads. Writes the report to out/verify.txt; scripts/package.sh refuses images
 without a passing one.
 
-It does not replace booting: it cannot see how the hardware behaves.
+A passing report says the files are right, not that the phone shows anything:
+only booting it can tell.
 
 Run by scripts/verify.sh, which exports the paths and board.conf values.
 """
@@ -120,7 +121,7 @@ def check_pins():
         pkg = DEVICE / env["KERNEL_PACKAGE"]
         check(pkg.is_file() and sha256(pkg) == env["KERNEL_PACKAGE_SHA256"], "kernel package checksum")
     else:
-        warn("kernel built from source: not the kernel tested on the phone")
+        warn("kernel built from source, not the pinned package")
     release = OUT / "kernel/include/config/kernel.release"
     got = release.read_text().strip() if release.exists() else "none"
     check(got == env["KERNEL_RELEASE"], "kernel release " + env["KERNEL_RELEASE"], "found " + got)
@@ -161,7 +162,7 @@ def check_packages():
             drift.append("%s %s -> %s" % (name, want, got))
     ok("%d critical packages at the tested versions" % critical)
     if drift:
-        warn("not critical, differ from the tested build: " + ", ".join(drift))
+        warn("not critical, differ from packages.lock: " + ", ".join(drift))
 
     # astraOS links Qt's private APIs: built against exactly the shipped Qt.
     local = Path("/lib/apk/db/installed")
@@ -201,10 +202,10 @@ def check_layout():
                 "etc/init/init.rc", "etc/init/sysboard.rc", "etc/init/astrad.rc", "etc/init/bootanim.rc",
                 "etc/passwd", "etc/group"):
         check(in_image(SYSTEM / "system" / rel), "/system/" + rel)
-    # What booted on the phone never ran it (udevadm was a link to itself).
+    # Never run on the phone with this system (udevadm was a link to itself).
     rc = (SYSTEM / "system/etc/init/init.rc").read_text()
     check("udevadm trigger" not in rc.replace('"udevadm trigger"', ""), "init.rc does not load every module at once",
-          "astra is older than this repository expects, or this was not tested on the phone")
+          "astra is older than this repository expects")
     check("start bootanim" not in rc, "only SysBoard draws on the display",
           "a second process on the display has corrupted the screen and restarted this phone")
     check(in_image(SYSTEM / "system/media/bootanimation/logo.png"), "the boot logo is in the image")

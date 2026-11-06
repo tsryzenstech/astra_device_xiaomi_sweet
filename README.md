@@ -19,14 +19,15 @@ The stock overlays target the downstream kernel, and the bootloader goes
 straight back to fastboot when a valid overlay table has no entry for the
 board, which an erased partition avoids.
 
-> **Status: Developer Preview.** Every low level part is pinned to the
-> combination that booted the phone to its apps. Audio does not work yet. Keep
-> a stock/MIUI fastboot ROM at hand to go back.
+> **Status: does not work on the phone yet.** The boot reaches userspace, but
+> the screen has only ever shown grey and black after the kernel starts: no
+> boot logo, no user interface. Keep a stock/MIUI fastboot ROM at hand to go
+> back.
 
 ## What stays fixed
 
-The system is astraOS's own init on Alpine Linux libraries. These stay at what
-was tested on the phone, and changing one means testing on the phone again:
+The system is astraOS's own init on Alpine Linux libraries. These are pinned so
+that two builds are the same, not because this combination is known to work:
 
 | Part | Pinned to | Where |
 |---|---|---|
@@ -36,7 +37,7 @@ was tested on the phone, and changing one means testing on the phone again:
 | Mesa 25.1.9, Qt 6.8.3, LLVM, musl, libdrm, firmware... | exact Alpine v3.22 versions | [`packages.lock`](packages.lock) (`critical`) |
 
 Alpine removes a version from its mirror when it replaces it. When that happens
-to a critical package the build **stops**: decide then whether to test the new
+to a critical package the build **stops**: decide then whether to move to the new
 version.
 
 Before anything is packaged, [`scripts/verify.py`](scripts/verify.py) checks the
@@ -89,11 +90,10 @@ sudo apt install qemu-user-static binfmt-support
    (`sm7150-mainline/firmware-xiaomi-sweet`, non-free, downloaded at build
    time and never committed here).
 2. **kernel** – by default the kernel package in
-   [`kernel/prebuilt`](kernel/prebuilt), the one tested on sweet with its
-   display, checked against `KERNEL_PACKAGE_SHA256` and unpacked (image, device
+   [`kernel/prebuilt`](kernel/prebuilt), checked against `KERNEL_PACKAGE_SHA256` and unpacked (image, device
    tree, modules). `KERNEL_SOURCE=source` builds sm7150-mainline instead, from
    `defconfig` + `sm7150.config` + [`kernel/astra.config`](kernel/astra.config)
-   (not tested on the phone). Either way the uncompressed kernel must stay under 31 MB: the bootloader
+   Either way the uncompressed kernel must stay under 31 MB: the bootloader
    puts the device tree right after that and a bigger kernel overwrites it.
 3. **astra** – builds the astraOS system code natively for aarch64/musl
    (static `init` for the ramdisk).
@@ -178,7 +178,7 @@ To go back to MIUI/HyperOS, flash a stock fastboot ROM with Xiaomi's tool.
 ```
 board.conf            device parameters (kernel, boot image, super)
 packages.txt          Alpine packages providing the userland libraries
-packages.lock         their versions in the build tested on the phone
+packages.lock         their pinned versions
 kernel/prebuilt/      the tested kernel package
 kernel/astra.config   kernel configuration fragment (KERNEL_SOURCE=source)
 rootdir/vendor/       vendor partition: fstab, init scripts
