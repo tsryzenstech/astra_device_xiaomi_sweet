@@ -85,6 +85,19 @@ cp "$IMAGES/userdata.img" "$IMAGES/userdata-wipe.img"
 truncate -s +1M "$IMAGES/userdata-wipe.img"
 rm -f "$IMAGES/esp.img"
 
+# userdata-diag.img (flash-diag): the same system, with astra.diag on the
+# kernel command line: init runs core/diag instead of the normal boot.
+log "images: userdata-diag.img"
+diag=$OUT/esp-diag
+rm -rf "$diag" && cp -a "$esp" "$diag"
+ukify build --linux "$OUT/Image" --initrd "$OUT/ramdisk.cpio.gz" --cmdline "$BOOT_CMDLINE astra.diag" \
+    --uname "$(kernel_release)" --output "$diag/EFI/BOOT/BOOTAA64.EFI" >/dev/null
+rm -f "$OUT/esp-diag.fat"
+mkfs.vfat -C -S "$STORAGE_SECTOR_SIZE" -s 1 -F 16 -n ASTRAESP "$OUT/esp-diag.fat" $(( 64 * 1024 )) >/dev/null
+mcopy -s -i "$OUT/esp-diag.fat" "$diag"/* ::/
+python3 "$DEVICE_DIR/scripts/mkuserdata.py" "$OUT/esp-diag.fat" "$IMAGES/userdata-diag.img" "$STORAGE_SECTOR_SIZE"
+truncate -s +1M "$IMAGES/userdata-diag.img"
+
 log "images: vbmeta.img (verification disabled)"
 avbtool make_vbmeta_image --flags 3 --padding_size 4096 --output "$IMAGES/vbmeta.img"
 
@@ -96,5 +109,5 @@ for p in $SUPER_PARTITIONS; do
 done
 lpmake "${args[@]}" >/dev/null
 
-(cd "$IMAGES" && sha256sum boot.img boot-debug.img boot-rescue.img userdata.img userdata-wipe.img vbmeta.img super.img > SHA256SUMS)
+(cd "$IMAGES" && sha256sum boot.img boot-debug.img boot-rescue.img userdata.img userdata-wipe.img userdata-diag.img vbmeta.img super.img > SHA256SUMS)
 log "images: done ($IMAGES)"

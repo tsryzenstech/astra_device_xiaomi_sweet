@@ -209,6 +209,9 @@ def check_layout():
     check("start bootanim" not in rc, "only SysBoard draws on the display",
           "a second process on the display has corrupted the screen and restarted this phone")
     check(in_image(SYSTEM / "system/media/bootanimation/logo.png"), "the boot logo is in the image")
+    script = SYSTEM / "system/bin/astra-diag"
+    check(in_image(SYSTEM / "system/bin/disptest") and script.is_file() and os.access(script, os.X_OK) and
+          b"\r" not in script.read_bytes() and in_image(SYSTEM / "system/etc/init/diag.rc"), "the diagnostics are in the image")
     for d in ("app", "priv-app"):
         n = sum(1 for _ in (SYSTEM / "system" / d).iterdir()) if (SYSTEM / "system" / d).is_dir() else 0
         check(n > 0, "/system/%s has %d apps" % (d, n))
@@ -327,6 +330,8 @@ def check_rc():
         check(result.returncode == 0, "init parses " + str(rcdir.relative_to(OUT)))
         for service in services:
             check(service in dump, "init knows the service " + service)
+        if services:
+            check("astra-diag" in dump and "on diag" in dump, "init knows the diagnostics")
         for line in dump.splitlines():
             if re.search(r"\b(error|unknown|invalid|bad)\b", line, re.I):
                 fail("init on %s: %s" % (rcdir.name, line))
@@ -412,6 +417,15 @@ def check_efi():
             os.unlink(tmp.name + ".efi")
     wipe = IMAGES / "userdata-wipe.img"
     check(wipe.stat().st_size == len(user) + (1 << 20), "userdata-wipe.img clears where /data starts")
+
+    # The diagnostic image: the same kernel and ramdisk, only one word more.
+    diag = pe_sections((OUT / "esp-diag/EFI/BOOT/BOOTAA64.EFI").read_bytes())
+    line = diag.get(".cmdline", b"").rstrip(b"\0\n").decode(errors="replace")
+    check(line == env["BOOT_CMDLINE"] + " astra.diag", "the diagnostic image adds only astra.diag", "found '%s'" % line)
+    check("astra.diag" not in env["BOOT_CMDLINE"], "the normal image does not run the diagnostics")
+    check(diag.get(".linux") == sections.get(".linux") and diag.get(".initrd") == sections.get(".initrd"),
+          "the diagnostic image has the same kernel and ramdisk")
+    check((IMAGES / "userdata-diag.img").stat().st_size == len(user) + (1 << 20), "userdata-diag.img clears where /data starts")
 
 
 def check_images():

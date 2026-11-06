@@ -14,10 +14,10 @@ name="astraOS-${version:-dev}-${DEVICE}"
 pkg=$OUT/$name
 rm -rf "$pkg" "$pkg.zip"
 mkdir -p "$pkg"
-cp "$IMAGES"/{boot.img,boot-debug.img,boot-rescue.img,userdata.img,userdata-wipe.img,vbmeta.img,super.img,SHA256SUMS} "$pkg/"
+cp "$IMAGES"/{boot.img,boot-debug.img,boot-rescue.img,userdata.img,userdata-wipe.img,userdata-diag.img,vbmeta.img,super.img,SHA256SUMS} "$pkg/"
 cp "$DEVICE_DIR"/flash/* "$OUT/verify.txt" "$pkg/"
 cp "$OUT/u-boot/u-boot.img" "$pkg/"
 (cd "$pkg" && sha256sum u-boot.img >> SHA256SUMS)
-chmod +x "$pkg/flash-all.sh"
+chmod +x "$pkg/flash-all.sh" "$pkg/flash-diag.sh"
 (cd "$OUT" && zip -qr "$name.zip" "$name")
 log "package: $OUT/$name.zip"
