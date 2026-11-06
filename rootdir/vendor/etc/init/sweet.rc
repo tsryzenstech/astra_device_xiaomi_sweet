@@ -1,5 +1,16 @@
 # Xiaomi Redmi Note 10 Pro (sweet) - device specific boot actions
 
+# Before all the drivers, in this order, as tested on the phone:
+#  - The watchdog's driver. The bootloader leaves the hardware watchdog running,
+#    and without it the phone freezes at about 30 s and resets at about 50 s.
+#  - The panel a second time. Its first initialisation, as the kernel starts,
+#    leaves it dark whatever is drawn. With all the drivers loaded, the same
+#    modeset freezes the phone, so it comes first.
+on hardware-init
+    exec -- /system/bin/modprobe qcom_wdt
+    write /sys/class/backlight/ae94000.dsi.0/brightness 0
+    exec -- /system/bin/disptest reinit
+
 on early-init
     # Firmware for the Adreno GPU, DSPs and modem lives in /vendor/firmware.
     write /sys/module/firmware_class/parameters/path /vendor/firmware

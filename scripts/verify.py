@@ -208,6 +208,12 @@ def check_layout():
     # loaded by this, the phone freezes at ~30 s and resets at ~50 s.
     check("udevadm trigger --action=add" in rc, "init.rc loads the drivers of every device",
           "astra is older than this repository expects")
+    # The order is what makes the panel light up without freezing the phone.
+    check("trigger hardware-init" in rc and rc.index("trigger hardware-init") < rc.index("udevadm trigger --action=add"),
+          "the panel is set up before all the drivers load", "astra is older than this repository expects")
+    sweet = (VENDOR / "etc/init/sweet.rc").read_text()
+    check("on hardware-init" in sweet and sweet.index("modprobe qcom_wdt") < sweet.index("disptest reinit"),
+          "sweet.rc loads the watchdog's driver, then initialises the panel again")
     check((LIB / "modules" / env["KERNEL_RELEASE"] / "kernel/drivers/watchdog").is_dir() and
           any((LIB / "modules" / env["KERNEL_RELEASE"] / "kernel/drivers/watchdog").glob("qcom-wdt.ko*")),
           "the hardware watchdog's driver is in the image")

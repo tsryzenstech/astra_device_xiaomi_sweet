@@ -21,11 +21,16 @@ board, which an erased partition avoids.
 
 > **Status: Developer Preview.** astraOS starts on the phone (M2101K6G, panel
 > `38-0c-0a`) with its logo, user interface and touch, from a diagnostic boot.
-> Keep a stock/MIUI fastboot ROM at hand to go back. Two things are essential:
+> Keep a stock/MIUI fastboot ROM at hand to go back. Three things are essential,
+> all found on the phone ([`sweet.rc`](rootdir/vendor/etc/init/sweet.rc)):
 >
-> - **The hardware watchdog's driver.** The bootloader leaves the watchdog
+> - **The hardware watchdog's driver, first.** The bootloader leaves the watchdog
 >   running. Without `qcom_wdt` the phone freezes at about 30 s and resets at
->   about 50 s, whatever is running. `udevadm trigger` in `init.rc` loads it.
+>   about 50 s, whatever is running.
+> - **A second panel initialisation, before all the other drivers.** The first,
+>   as the kernel starts, leaves the panel dark whatever is drawn. A short modeset
+>   to 60 Hz and back fixes it, but with all the drivers loaded it freezes the
+>   phone, as does blanking the framebuffer.
 > - **120 Hz.** The panel shows garbage in the driver's 60 Hz mode, so the other
 >   rates are not offered (`DISPLAY_REFRESH`).
 
