@@ -205,6 +205,9 @@ def check_layout():
     rc = (SYSTEM / "system/etc/init/init.rc").read_text()
     check("udevadm trigger" not in rc.replace('"udevadm trigger"', ""), "init.rc does not load every module at once",
           "astra is older than this repository expects, or this was not tested on the phone")
+    check("start bootanim" not in rc, "only SysBoard draws on the display",
+          "a second process on the display has corrupted the screen and restarted this phone")
+    check(in_image(SYSTEM / "system/media/bootanimation/logo.png"), "the boot logo is in the image")
     for d in ("app", "priv-app"):
         n = sum(1 for _ in (SYSTEM / "system" / d).iterdir()) if (SYSTEM / "system" / d).is_dir() else 0
         check(n > 0, "/system/%s has %d apps" % (d, n))
@@ -469,6 +472,10 @@ def check_sysboard_starts():
         check(not errors, "SysBoard's QML loads on this Qt without a display", "; ".join(errors[:10]))
         if code is not None and not errors:
             warn("SysBoard stopped by itself without a display (exit code %s): see out/verify-sysboard.log" % code)
+        if "sysboard: shell ready" in log:
+            ok("the shell finished loading behind the boot logo")
+        else:
+            warn("the shell did not finish loading in a minute without a display")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
