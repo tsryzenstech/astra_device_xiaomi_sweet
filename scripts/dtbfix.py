@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-"""Corrects two interconnect references in the kernel's device tree.
+"""Corrects the kernel's device tree: two interconnect references and the ADSP.
+
+The ADSP stays off until audio works. Its sensor process crashes about every 40 s
+("USER-PD DOG detects stalled init"), nothing on the phone serves it, and the kernel
+restarts the ADSP each time. One of these restarts sooner or later froze the phone,
+always right after q6afe_probe, seen at 86 s and at 247 s. Audio and sensors work
+through the ADSP and do not work yet anyway. "fail" is the device tree's own word
+for a device that cannot operate, and it has the length of "okay".
 
 sm7150.dtsi names endpoints on providers that do not own them, and the number
 then means another endpoint of that provider:
@@ -29,6 +36,7 @@ MASTER_QUP_1 = 2   # in aggre2_noc's numbering; in aggre1_noc's it is MASTER_TSI
 MASTER_SDCC_2 = 4  # in aggre1_noc's numbering; in aggre2_noc's it is MASTER_CRYPTO_CORE_0
 QUP1_WRAPPER = "geniqup@ac0000"
 SD_CARD = "mmc@8804000"
+ADSP = "remoteproc@62400000"
 
 
 def properties(blob):
@@ -99,20 +107,33 @@ def qup1_votes(blob):
                if QUP1_WRAPPER in path.split("/") and provider == aggre2 and endpoint == MASTER_QUP_1)
 
 
+def adsp_status(blob):
+    """(the ADSP's status, the offset of its value)."""
+    for path, name, off, length in properties(blob):
+        if name == "status" and path.rsplit("/", 1)[-1] == ADSP:
+            return bytes(blob[off:off + length]).rstrip(b"\0").decode(), off
+    raise ValueError("the ADSP is not in this device tree")
+
+
 def main():
     if len(sys.argv) != 2:
         sys.exit(__doc__)
     with open(sys.argv[1], "rb") as f:
-        blob = bytearray(f.read())
+        original = f.read()
+    blob = bytearray(original)
     fixes = wrong(blob)
     for _, cell, provider in fixes:
         struct.pack_into(">I", blob, cell, provider)
-    if wrong(blob) or not qup1_votes(blob):
+    status, off = adsp_status(blob)
+    if status == "okay":
+        blob[off:off + 4] = b"fail"
+    if wrong(blob) or not qup1_votes(blob) or adsp_status(blob)[0] != "fail":
         sys.exit("dtbfix: the device tree is not as expected")
-    if fixes:
+    if blob != original:
         with open(sys.argv[1], "wb") as f:
             f.write(blob)
-    print("dtbfix: %d references corrected, %d QUP1 references right" % (len(fixes), qup1_votes(blob)))
+    print("dtbfix: %d references corrected, %d QUP1 references right, ADSP %s"
+          % (len(fixes), qup1_votes(blob), adsp_status(blob)[0]))
 
 
 if __name__ == "__main__":

@@ -40,8 +40,13 @@ board, which an erased partition avoids.
 >   froze the phone. Tried on the phone: the touch works with the correction, with
 >   nothing else changed. It belongs upstream in the kernel's device tree.
 >
-> Not working yet: Bluetooth (the kernel asks for `qca/crbtfw01.tlv`, which is not
-> in `linux-firmware`), audio, camera, fingerprint.
+> - **The ADSP stays off** (`dtbfix.py` again). Its sensor process crashes about
+>   every 40 s and the kernel restarts it; two freezes ended right after such a
+>   restart. Audio and sensors need it and do not work yet: to work on them, start
+>   by making it stop crashing.
+>
+> Not working yet: audio, camera, fingerprint, proximity. Bluetooth's chip takes the
+> firmware (see `build-rootfs.sh`); turning it on from the system is not tried yet.
 
 ## What stays fixed
 

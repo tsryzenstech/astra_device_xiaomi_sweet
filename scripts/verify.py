@@ -364,6 +364,10 @@ def check_firmware():
     zap = "qcom/sm7150/xiaomi/sweet/a615_zap.mbn"
     check((RAMDISK / "lib/firmware" / zap).is_file(), "GPU zap shader in the ramdisk")
     check((VENDOR / "firmware" / zap).is_file(), "GPU zap shader in /vendor/firmware")
+    # The names the kernel asks for lead to what is on the phone (see build-rootfs.sh).
+    for link, target in (("crbtfw01.tlv.zst", "crbtfw21.tlv.zst"), ("crnv01.bin.zst", "crnv21.bin.zst")):
+        check(os.readlink(VENDOR / "firmware/qca" / link) == "/lib/firmware/qca/" + target
+              and (SYSTEM / "system/lib/firmware/qca" / target).is_file(), "Bluetooth firmware %s" % link)
     check((RAMDISK / "bin/busybox").is_file(), "rescue shell in the ramdisk")
     check((RAMDISK / "first_stage.fstab").read_bytes() == (VENDOR / "etc/fstab").read_bytes(), "first stage fstab is /vendor/etc/fstab")
     check((VENDOR / "etc/init/sweet.rc").is_file(), "/vendor/etc/init/sweet.rc")
@@ -405,6 +409,7 @@ def check_efi():
     left, votes = dtbfix.wrong(tree), dtbfix.qup1_votes(tree)
     check(not left and votes > 0, "QUP1 and the SD card vote on the right interconnect",
           "%d wrong, %d right" % (len(left), votes))
+    check(dtbfix.adsp_status(tree)[0] == "fail", "the ADSP stays off until audio works")
     image = (OUT / "Image").read_bytes()
     check(image[0x38:0x3c] == b"ARMd", "kernel is an arm64 Image")
 

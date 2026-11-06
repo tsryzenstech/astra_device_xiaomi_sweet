@@ -120,6 +120,13 @@ if [ -d "$SRC/firmware/usr/lib/firmware" ]; then
 else
     warn "device firmware missing: GPU, audio and modem will not start"
 fi
+# sweet's Bluetooth chip (SOC 0x40020140, ROM 0x0201) is declared a WCN3998, for
+# which the kernel names firmware from another part of the version: it asks for
+# crbtfw01, which does not exist. linux-firmware's 21 is the one for this ROM: tried
+# on the phone, the chip takes it ("QCA setup on UART is completed").
+mkdir -p "$VENDOR_ROOT/firmware/qca"
+ln -sf /lib/firmware/qca/crbtfw21.tlv.zst "$VENDOR_ROOT/firmware/qca/crbtfw01.tlv.zst"
+ln -sf /lib/firmware/qca/crnv21.bin.zst "$VENDOR_ROOT/firmware/qca/crnv01.bin.zst"
 
 # ---- 4. Product --------------------------------------------------------------
 rm -rf "$PRODUCT_ROOT"
