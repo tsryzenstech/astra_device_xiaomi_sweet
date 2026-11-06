@@ -21,6 +21,11 @@ libdrm
 libinput
 libxkbcommon
 fontconfig
+font-noto-cjk
+font-noto-arabic
+font-noto-hebrew
+font-noto-devanagari
+font-noto-thai
 libpng
 
 # Qt 6

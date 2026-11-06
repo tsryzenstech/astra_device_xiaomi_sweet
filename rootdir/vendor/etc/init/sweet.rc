@@ -3,13 +3,21 @@
 # Before all the drivers, in this order, as tested on the phone:
 #  - The watchdog's driver. The bootloader leaves the hardware watchdog running,
 #    and without it the phone freezes at about 30 s and resets at about 50 s.
-#  - The panel a second time. Its first initialisation, as the kernel starts,
-#    leaves it dark whatever is drawn. With all the drivers loaded, the same
-#    modeset freezes the phone, so it comes first.
+#  - The panel a second time, hidden by the brightness. With all the drivers
+#    loaded this modeset freezes the phone, so it comes first. It may not be
+#    needed now that the next step exists: not tested without it yet.
+#  - Two DSC slices per packet, as Xiaomi's panel settings have it (slice-per-pkt).
+#    The kernel's DSI driver can only send one, and then the panel stays black or
+#    shows garbage. DSI_VIDEO_COMPRESSION_MODE_CTRL: WC 540 -> 1080, PKT_PER_LINE
+#    2 -> 1. A modeset to another rate would put it back: only 120 Hz is offered.
+#  - The logo, at once: the panel scans the framebuffer out continuously.
 on hardware-init
     exec -- /system/bin/modprobe qcom_wdt
     write /sys/class/backlight/ae94000.dsi.0/brightness 0
     exec -- /system/bin/disptest reinit
+    exec -- /system/bin/disptest setreg 0xae942a0 0x021c0b41 0x04380b01
+    write /sys/class/backlight/ae94000.dsi.0/brightness 1024
+    start bootanim
 
 on early-init
     # Firmware for the Adreno GPU, DSPs and modem lives in /vendor/firmware.

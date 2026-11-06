@@ -19,20 +19,23 @@ The stock overlays target the downstream kernel, and the bootloader goes
 straight back to fastboot when a valid overlay table has no entry for the
 board, which an erased partition avoids.
 
-> **Status: Developer Preview.** astraOS starts on the phone (M2101K6G, panel
-> `38-0c-0a`) with its logo, user interface and touch, from a diagnostic boot.
-> Keep a stock/MIUI fastboot ROM at hand to go back. Three things are essential,
-> all found on the phone ([`sweet.rc`](rootdir/vendor/etc/init/sweet.rc)):
+> **Status: Developer Preview.** On the phone (M2101K6G, panel `38-0c-0a`) the
+> logo, user interface and touch have worked with these steps run by hand. Keep a
+> stock/MIUI fastboot ROM at hand to go back. What the phone needs, all in
+> [`sweet.rc`](rootdir/vendor/etc/init/sweet.rc):
 >
 > - **The hardware watchdog's driver, first.** The bootloader leaves the watchdog
 >   running. Without `qcom_wdt` the phone freezes at about 30 s and resets at
 >   about 50 s, whatever is running.
-> - **A second panel initialisation, before all the other drivers.** The first,
->   as the kernel starts, leaves the panel dark whatever is drawn. A short modeset
->   to 60 Hz and back fixes it, but with all the drivers loaded it freezes the
->   phone, as does blanking the framebuffer.
-> - **120 Hz.** The panel shows garbage in the driver's 60 Hz mode, so the other
->   rates are not offered (`DISPLAY_REFRESH`).
+> - **Two DSC slices per packet.** The panel stays black or shows garbage with the
+>   one the kernel's DSI driver sends. Until the driver can do it, `disptest
+>   setreg` writes the register from userspace; the proper fix is a kernel patch.
+> - **120 Hz only**, because a modeset to another rate resets that register. With
+>   all the drivers loaded, modesets and blanking the framebuffer also freeze the
+>   phone.
+>
+> Not working yet: Bluetooth (the kernel asks for `qca/crbtfw01.tlv`, which is not
+> in `linux-firmware`), audio, camera, fingerprint.
 
 ## What stays fixed
 

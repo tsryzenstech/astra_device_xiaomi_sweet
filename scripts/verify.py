@@ -212,15 +212,20 @@ def check_layout():
     check("trigger hardware-init" in rc and rc.index("trigger hardware-init") < rc.index("udevadm trigger --action=add"),
           "the panel is set up before all the drivers load", "astra is older than this repository expects")
     sweet = (VENDOR / "etc/init/sweet.rc").read_text()
-    check("on hardware-init" in sweet and sweet.index("modprobe qcom_wdt") < sweet.index("disptest reinit"),
-          "sweet.rc loads the watchdog's driver, then initialises the panel again")
+    steps = ("modprobe qcom_wdt", "disptest reinit", "disptest setreg 0xae942a0 0x021c0b41 0x04380b01", "start bootanim")
+    check("on hardware-init" in sweet and all(s in sweet for s in steps) and
+          [sweet.index(s) for s in steps] == sorted(sweet.index(s) for s in steps),
+          "sweet.rc: watchdog driver, panel again, two DSC slices per packet, logo")
+    fonts = SYSTEM / "system/share/fonts"
+    files = [f.name for f in fonts.rglob("*") if f.is_file()] if fonts.is_dir() else []
+    for name, script in (("CJK", "Chinese, Japanese, Korean"), ("Arabic", "Arabic")):
+        check(any(name in f for f in files), "a font for %s" % script)
+    check("/system/share/fonts" in (SYSTEM / "system/etc/fonts/fonts.conf").read_text(), "fontconfig looks in /system/share/fonts")
     check((LIB / "modules" / env["KERNEL_RELEASE"] / "kernel/drivers/watchdog").is_dir() and
           any((LIB / "modules" / env["KERNEL_RELEASE"] / "kernel/drivers/watchdog").glob("qcom-wdt.ko*")),
           "the hardware watchdog's driver is in the image")
     for tool in ("rmtfs", "tqftpserv"):
         check(in_image(SYSTEM / "system/bin" / tool), "/system/bin/%s, for the modem and Wi-Fi" % tool)
-    check("start bootanim" not in rc, "only SysBoard draws on the display",
-          "a second process on the display has corrupted the screen and restarted this phone")
     check(in_image(SYSTEM / "system/media/bootanimation/logo.png"), "the boot logo is in the image")
     script = SYSTEM / "system/bin/astra-diag"
     check(in_image(SYSTEM / "system/bin/disptest") and script.is_file() and os.access(script, os.X_OK) and
