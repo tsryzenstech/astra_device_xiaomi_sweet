@@ -19,10 +19,15 @@ The stock overlays target the downstream kernel, and the bootloader goes
 straight back to fastboot when a valid overlay table has no entry for the
 board, which an erased partition avoids.
 
-> **Status: does not work on the phone yet.** The boot reaches userspace, but
-> the screen has only ever shown grey and black after the kernel starts: no
-> boot logo, no user interface. Keep a stock/MIUI fastboot ROM at hand to go
-> back.
+> **Status: Developer Preview.** astraOS starts on the phone (M2101K6G, panel
+> `38-0c-0a`) with its logo, user interface and touch, from a diagnostic boot.
+> Keep a stock/MIUI fastboot ROM at hand to go back. Two things are essential:
+>
+> - **The hardware watchdog's driver.** The bootloader leaves the watchdog
+>   running. Without `qcom_wdt` the phone freezes at about 30 s and resets at
+>   about 50 s, whatever is running. `udevadm trigger` in `init.rc` loads it.
+> - **120 Hz.** The panel shows garbage in the driver's 60 Hz mode, so the other
+>   rates are not offered (`DISPLAY_REFRESH`).
 
 ## What stays fixed
 
@@ -187,6 +192,7 @@ To go back to MIUI/HyperOS, flash a stock fastboot ROM with Xiaomi's tool.
 board.conf            device parameters (kernel, boot image, super)
 packages.txt          Alpine packages providing the userland libraries
 packages.lock         their pinned versions
+scripts/build-qcom-tools.sh  rmtfs and tqftpserv, which bring the modem up
 kernel/prebuilt/      the tested kernel package
 kernel/astra.config   kernel configuration fragment (KERNEL_SOURCE=source)
 rootdir/vendor/       vendor partition: fstab, init scripts

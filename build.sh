@@ -7,7 +7,7 @@
 #                                   (asks for sudo)
 #   ./build.sh --docker [step...]   in the Docker build image
 #
-# Steps (default: all): fetch kernel uboot astra llama rootfs images verify package
+# Steps (default: all): fetch kernel uboot astra llama qcom rootfs images verify package
 # Other: clean (removes out/), distclean (also removes cache/)
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -20,7 +20,7 @@ if [ "${1:-}" = "--docker" ]; then
 fi
 steps=("$@")
 [ ${#steps[@]} -eq 0 ] && steps=(all)
-[ "${steps[0]}" = all ] && steps=(fetch kernel uboot astra llama rootfs images verify package)
+[ "${steps[0]}" = all ] && steps=(fetch kernel uboot astra llama qcom rootfs images verify package)
 
 case "${steps[0]}" in
     clean) rm -rf out 2>/dev/null || sudo rm -rf out; exit 0 ;;
@@ -54,6 +54,7 @@ for step in "${steps[@]}"; do
         uboot) run build-uboot ;;
         astra) run build-astra ;;
         llama) run build-llama ;;
+        qcom) run build-qcom-tools ;;
         rootfs) run build-rootfs ;;
         images) run make-images ;;
         verify) run verify ;;

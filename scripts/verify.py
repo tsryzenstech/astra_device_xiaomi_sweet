@@ -204,8 +204,15 @@ def check_layout():
         check(in_image(SYSTEM / "system" / rel), "/system/" + rel)
     # Never run on the phone with this system (udevadm was a link to itself).
     rc = (SYSTEM / "system/etc/init/init.rc").read_text()
-    check("udevadm trigger" not in rc.replace('"udevadm trigger"', ""), "init.rc does not load every module at once",
+    # The bootloader leaves the hardware watchdog running: without its driver,
+    # loaded by this, the phone freezes at ~30 s and resets at ~50 s.
+    check("udevadm trigger --action=add" in rc, "init.rc loads the drivers of every device",
           "astra is older than this repository expects")
+    check((LIB / "modules" / env["KERNEL_RELEASE"] / "kernel/drivers/watchdog").is_dir() and
+          any((LIB / "modules" / env["KERNEL_RELEASE"] / "kernel/drivers/watchdog").glob("qcom-wdt.ko*")),
+          "the hardware watchdog's driver is in the image")
+    for tool in ("rmtfs", "tqftpserv"):
+        check(in_image(SYSTEM / "system/bin" / tool), "/system/bin/%s, for the modem and Wi-Fi" % tool)
     check("start bootanim" not in rc, "only SysBoard draws on the display",
           "a second process on the display has corrupted the screen and restarted this phone")
     check(in_image(SYSTEM / "system/media/bootanimation/logo.png"), "the boot logo is in the image")
@@ -349,6 +356,7 @@ def check_firmware():
     check((VENDOR / "etc/init/sweet.rc").is_file(), "/vendor/etc/init/sweet.rc")
     prop = (VENDOR / "build.prop").read_text() if (VENDOR / "build.prop").exists() else ""
     check("ro.astra.ui.scale=" in prop, "/vendor/build.prop")
+    check("ro.astra.display.refresh=120" in prop, "the display stays at 120 Hz, the only rate that shows a clean image")
 
 
 # ---- Images -----------------------------------------------------------------

@@ -71,6 +71,8 @@ cp -a --remove-destination "$OUT/astra-install/." "$SYSTEM_ROOT/"
 [ -L "$SYSTEM_ROOT/system/bin/init" ] && die "/system/bin/init is a link, not astraOS init"
 # Cloudy's engine (scripts/build-llama.sh)
 [ -d "$OUT/llama-install" ] && cp -a --remove-destination "$OUT/llama-install/." "$SYSTEM_ROOT/"
+# The modem's helpers (scripts/build-qcom-tools.sh)
+cp -a --remove-destination "$OUT/qcom-install/." "$SYSTEM_ROOT/"
 
 # Kernel modules
 mkdir -p "$SYSTEM_ROOT/system/lib/modules"
@@ -108,6 +110,7 @@ ro.product.manufacturer=$DEVICE_MANUFACTURER
 ro.board.platform=$SOC
 ro.astra.ui.scale=$UI_SCALE
 ro.astra.motion_blur=${MOTION_BLUR:-true}
+ro.astra.display.refresh=${DISPLAY_REFRESH:-0}
 ro.kernel.release=$(kernel_release)
 EOF
 mkdir -p "$VENDOR_ROOT/firmware"
