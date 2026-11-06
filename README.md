@@ -175,14 +175,12 @@ To go back to MIUI/HyperOS, flash a stock fastboot ROM with Xiaomi's tool.
   stage with the USB rescue shell; there, `dmesg` and
   `cat /sys/fs/pstore/*` (the failed boot's log) tell what happened.
   `boot-debug.img` and `boot-rescue.img` are never flashed.
-- **To find out why the screen stays black:** `flash-diag.bat` (or
-  `./flash-diag.sh`) erases the phone and flashes `userdata-diag.img`, the same
-  system with `astra.diag` on the kernel command line. Instead of the normal
-  boot it runs [`core/diag`](../astra/core/diag) from astra: the GPU alone, the
-  display through each path at 60 and 120 Hz, then SysBoard. A journal on
-  `/data` goes on with the next test when one restarts the phone. Leave it
-  connected: the results appear as a USB drive named `ASTRADIAG`, with a root
-  shell on the USB serial port. A normal `flash-all --wipe` goes back.
+- **To see the system from a computer:** `flash-diag.bat` (or `./flash-diag.sh`)
+  erases the phone and flashes `userdata-diag.img`, the same system with
+  `astra.diag` on the kernel command line: a root shell on the USB serial port and
+  the kernel log in `/data/diag`, synced every 2 s so that a freeze leaves its last
+  messages behind. `disptest` tests the display by hand. A normal
+  `flash-all --wipe` goes back.
 
 ## Device notes
 

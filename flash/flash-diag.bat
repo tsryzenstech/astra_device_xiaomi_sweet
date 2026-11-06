@@ -1,8 +1,8 @@
 @echo off
 rem SPDX-License-Identifier: Apache-2.0
-rem Flashes the diagnostic version of astraOS on a Redmi Note 10 Pro (sweet) in
-rem fastboot mode. It erases all the data on the phone. Leave the phone connected:
-rem it tests the display by itself and shows the results as a USB drive, ASTRADIAG.
+rem Flashes the developer version of astraOS on a Redmi Note 10 Pro (sweet) in
+rem fastboot mode. It erases all the data on the phone. It is the normal system,
+rem with a root shell on the USB serial port and the kernel log kept in /data/diag.
 setlocal
 cd /d "%~dp0"
 
@@ -18,5 +18,4 @@ fastboot erase metadata
 fastboot flash userdata userdata-diag.img || exit /b 1
 fastboot reboot
 echo.
-echo Done. Leave the phone connected and on: the tests take about 10 minutes and the
-echo screen may stay black or restart. There is nothing else to do on the phone.
+echo Done. Leave the phone connected.
