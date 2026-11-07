@@ -144,6 +144,9 @@ jobs:
         run: |
           [ -f build.log ] || exit 0
           { echo '### Build log (last 120 lines)'; echo '```'; tail -n 120 build.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          # Also as an annotation, which the API gives without signing in.
+          tail -n 60 build.log | cut -c1-300 | python3 -c 'import sys; t = sys.stdin.read().replace("%", "%25").replace("", "").replace("
+", "%0A"); print("::error title=Build log::" + t)'
 
       - name: Verification report
         if: always()
