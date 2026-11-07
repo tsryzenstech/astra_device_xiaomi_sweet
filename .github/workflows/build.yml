@@ -132,7 +132,18 @@ jobs:
       # Stops before packaging when scripts/verify.py finds a problem.
       - name: Build and verify
         working-directory: astra_device_xiaomi_sweet
-        run: ./build.sh --docker all
+        run: |
+          set -o pipefail
+          ./build.sh --docker all 2>&1 | tee build.log
+
+      # The end of the log, where a failed build says why, in the run's summary:
+      # anyone can read it there, the full log needs a GitHub account.
+      - name: Why the build failed
+        if: failure()
+        working-directory: astra_device_xiaomi_sweet
+        run: |
+          [ -f build.log ] || exit 0
+          { echo '### Build log (last 120 lines)'; echo '```'; tail -n 120 build.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verification report
         if: always()

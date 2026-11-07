@@ -3,3 +3,4 @@
 *.img
 *.zip
 /release.json
+/build.log
