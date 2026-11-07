@@ -63,5 +63,9 @@ libqmi
 # Audio (volume control through PipeWire, ALSA mixer as fallback)
 pipewire
 wireplumber
+pipewire-pulse
+?pipewire-spa-bluez
 alsa-utils
 ?alsa-ucm-conf
+# Answers the ADSP's sensor process, which otherwise crashes the ADSP.
+?hexagonrpcd
