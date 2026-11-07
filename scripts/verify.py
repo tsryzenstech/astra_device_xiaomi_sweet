@@ -25,6 +25,7 @@ import tempfile
 import zlib
 from pathlib import Path
 
+import acffix
 import dtbfix
 
 env = os.environ
@@ -365,7 +366,10 @@ def check_firmware():
     check((RAMDISK / "lib/firmware" / zap).is_file(), "GPU zap shader in the ramdisk")
     check((VENDOR / "firmware" / zap).is_file(), "GPU zap shader in /vendor/firmware")
     acf = VENDOR / "firmware/aw88261_acf.bin"
-    check(acf.is_file() and sha256(acf) == env["AW_ACF_SHA256"], "the amplifiers' calibration file")
+    # The downloaded file (fetch.sh checks AW_ACF_SHA256) as acffix.py corrects it.
+    check(acf.is_file() and sha256(acf) == acffix.FIXED_SHA256, "the amplifiers' calibration file, corrected")
+    for rel in ("conf.d/sm8250/Redmi Note 10 Pro.conf", "Xiaomi/sweet/HiFi.conf"):
+        check((SYSTEM / "system/share/alsa/ucm2" / rel).is_file(), "the speaker's ALSA profile " + rel)
     # The names the kernel asks for lead to what is on the phone (see build-rootfs.sh).
     for link, target in (("crbtfw01.tlv.zst", "crbtfw21.tlv.zst"), ("crnv01.bin.zst", "crnv21.bin.zst")):
         check(os.readlink(VENDOR / "firmware/qca" / link) == "/lib/firmware/qca/" + target

@@ -44,12 +44,16 @@ board, which an erased partition avoids.
 >   it for files. With its output on the kernel log, where init puts services, that
 >   process stalls and takes the ADSP down about every 40 s, and two freezes ended
 >   right after such a restart. With its output elsewhere: no crash at all.
-> - **The speaker amplifiers** bind to the aw88261 driver (`dtbfix.py`) with the
->   calibration file from the stock ROM (`board.conf`). The sound card appears and
->   the clocks reach the amplifier, but it reports a boost over-current and does not
->   start. **There is no sound from the speaker yet.**
+> - **The speaker amplifiers** (AW88263S) bind to the aw88261 driver (`dtbfix.py`)
+>   with the calibration file from the stock ROM (`board.conf`), which `acffix.py`
+>   corrects in the build: the I2S format the sound card sends (16 bit, 32 fs) and
+>   the driver's efuse check, which otherwise stops the boost. Tried on the phone with
+>   the driver alone: **the speaker plays**. `ucm2/` tells ALSA, and so PipeWire, how
+>   to use the card (the route to the primary MI2S, the speaker as output); that
+>   profile has not been tried on the phone yet. Only the amplifier at 0x34 is linked
+>   in the card.
 >
-> Not working yet: speaker and microphone, camera, fingerprint. Bluetooth's controller
+> Not working yet: microphone, camera, fingerprint. Bluetooth's controller
 > gets its address in `launch.sh`, the firmware in `build-rootfs.sh`; turning it on
 > was tried by hand, audio over it not yet.
 

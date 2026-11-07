@@ -121,6 +121,10 @@ else
     warn "device firmware missing: GPU, audio and modem will not start"
 fi
 cp "$SRC/aw88261_acf.bin" "$VENDOR_ROOT/firmware/aw88261_acf.bin"
+python3 "$DEVICE_DIR/scripts/acffix.py" "$VENDOR_ROOT/firmware/aw88261_acf.bin"
+# How ALSA (and so PipeWire) uses the sound card: the speaker.
+mkdir -p "$SYSTEM_ROOT/system/share/alsa/ucm2"
+cp -a "$DEVICE_DIR/ucm2/." "$SYSTEM_ROOT/system/share/alsa/ucm2/"
 # sweet's Bluetooth chip (SOC 0x40020140, ROM 0x0201) is declared a WCN3998, for
 # which the kernel names firmware from another part of the version: it asks for
 # crbtfw01, which does not exist. linux-firmware's 21 is the one for this ROM: tried
