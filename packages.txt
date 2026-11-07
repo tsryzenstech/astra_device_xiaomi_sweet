@@ -71,3 +71,7 @@ alsa-utils
 ?alsa-ucm-conf
 # Answers the ADSP's sensor process, which otherwise crashes the ADSP.
 ?hexagonrpcd
+
+# MyDroid's Android environment: Waydroid's container (LXC) and its tools; the
+# Android images are downloaded on the phone when the user installs Android.
+?waydroid
