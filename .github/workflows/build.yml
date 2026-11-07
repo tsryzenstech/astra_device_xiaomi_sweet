@@ -205,5 +205,6 @@ jobs:
           make_latest: ${{ needs.plan.outputs.prerelease == 'true' && 'false' || 'true' }}
           files: |
             astra_device_xiaomi_sweet/out/*.zip
-            astra_device_xiaomi_sweet/out/*.gz
+            astra_device_xiaomi_sweet/out/*-super.img.gz
+            astra_device_xiaomi_sweet/out/*-esp.fat.gz
             astra_device_xiaomi_sweet/out/ota.json
