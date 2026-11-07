@@ -113,6 +113,24 @@ ro.astra.motion_blur=${MOTION_BLUR:-true}
 ro.astra.display.refresh=${DISPLAY_REFRESH:-0}
 ro.kernel.release=$(kernel_release)
 EOF
+# What this build is for updates: release.json, written by the GitHub workflow
+# (tag, channel, time, changelog). A local build has none: channel "local", and
+# the phone then offers the newest stable release.
+python3 - "$DEVICE_DIR/release.json" "$VENDOR_ROOT" "$OTA_REPOSITORY" <<'PY'
+import json, os, sys, time
+src, vendor, repo = sys.argv[1:4]
+release = {"tag": "", "channel": "local", "time": int(time.time()), "notes": []}
+if os.path.exists(src):
+    release.update(json.load(open(src)))
+os.makedirs(vendor + "/etc", exist_ok=True)
+with open(vendor + "/etc/astra-release.json", "w") as out:
+    json.dump(release, out, indent=1, ensure_ascii=False)
+with open(vendor + "/build.prop", "a") as prop:
+    prop.write("ro.astra.ota.repo=%s\n" % repo)
+    prop.write("ro.astra.ota.channel=%s\n" % release["channel"])
+    prop.write("ro.astra.ota.tag=%s\n" % release["tag"])
+    prop.write("ro.astra.ota.time=%d\n" % int(release["time"]))
+PY
 mkdir -p "$VENDOR_ROOT/firmware"
 if [ -d "$SRC/firmware/usr/lib/firmware" ]; then
     cp -a "$SRC/firmware/usr/lib/firmware/." "$VENDOR_ROOT/firmware/"

@@ -1,12 +1,18 @@
 # Builds astraOS for sweet and publishes it on GitHub (see astra's
 # docs/VERSIONING.md):
 #
-#   automatic builds -> pre-release "<version>-rev<N>" (26.0-rev1, 26.0-rev2...)
+#   automatic builds -> pre-release "<version>-rev<N>" (27.0-rev1, 27.0-rev2...),
+#     the phones' "prerelease" update channel
 #     a new astraOS version (astra's "version" workflow sends astra-version;
 #     the scheduled check catches a version that has no build yet), or a
 #     push to this repository
 #   manual builds (Actions > build > Run workflow) -> release "<version>"
-#     ("<version>-rev<N>" once "<version>" exists), marked as the latest
+#     ("<version>-rev<N>" once "<version>" exists), marked as the latest: the
+#     phones' "stable" update channel
+#
+# Each build also publishes what the phones download to update themselves
+# (super.img.gz, esp.fat.gz) and ota.json, which describes it with the changes
+# since the previous build of its channel.
 #
 # The maintainer can also turn a pre-release into a release on GitHub.
 # Every build's zip is also an artifact of its workflow run.
@@ -39,6 +45,8 @@ jobs:
       tag: ${{ steps.plan.outputs.tag }}
       suffix: ${{ steps.plan.outputs.suffix }}
       prerelease: ${{ steps.plan.outputs.prerelease }}
+      channel: ${{ steps.plan.outputs.channel }}
+      time: ${{ steps.plan.outputs.time }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -78,13 +86,17 @@ jobs:
           else
               prerelease=true tag=$version-rev$next suffix=-rev$next
           fi
-          echo "astraOS $version: build=$build tag=$tag prerelease=$prerelease"
+          channel=stable
+          [ "$prerelease" = true ] && channel=prerelease
+          echo "astraOS $version: build=$build tag=$tag channel=$channel"
           {
               echo "build=$build"
               echo "version=$version"
               echo "tag=$tag"
               echo "suffix=$suffix"
               echo "prerelease=$prerelease"
+              echo "channel=$channel"
+              echo "time=$(date +%s)"
           } >> "$GITHUB_OUTPUT"
 
   sweet:
@@ -95,15 +107,27 @@ jobs:
     env:
       ASTRA_VERSION_SUFFIX: ${{ needs.plan.outputs.suffix }}
     steps:
+      # The whole history of both: the changelog lists the commits since the
+      # previous build.
       - uses: actions/checkout@v4
         with:
           path: astra_device_xiaomi_sweet
+          fetch-depth: 0
 
       - uses: actions/checkout@v4
         with:
           repository: tsryzenstech/astra
           path: astra
           token: ${{ secrets.ASTRA_REPO_TOKEN || github.token }}
+          fetch-depth: 0
+
+      - name: Release description
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 astra_device_xiaomi_sweet/scripts/release-notes.py "${{ needs.plan.outputs.tag }}" \
+              "${{ needs.plan.outputs.channel }}" "${{ needs.plan.outputs.time }}" \
+              astra astra_device_xiaomi_sweet astra_device_xiaomi_sweet/release.json
 
       # Stops before packaging when scripts/verify.py finds a problem.
       - name: Build and verify
@@ -129,12 +153,23 @@ jobs:
           PRERELEASE: ${{ needs.plan.outputs.prerelease }}
           EVENT: ${{ github.event_name }}
         run: |
-          kind="Release"
-          [ "$PRERELEASE" = true ] && kind="Pre-release (delta build)"
+          kind="Release (stable channel)"
+          [ "$PRERELEASE" = true ] && kind="Pre-release (delta build, prerelease channel)"
+          codename=$(python3 -c 'import json; print(json.load(open("astra/version.json"))["codename"])')
+          changes=$(python3 -c '
+          import json
+          for n in json.load(open("astra_device_xiaomi_sweet/release.json"))["notes"]:
+              print("- " + n)')
           cat > release.md <<EOF
-          **astraOS $TAG** for the Xiaomi Redmi Note 10 Pro (sweet).
+          **astraOS $TAG "$codename"** for the Xiaomi Redmi Note 10 Pro (sweet).
 
           $kind, built by the "$EVENT" event from astra $(git -C astra rev-parse --short HEAD) and astra_device_xiaomi_sweet $(git -C astra_device_xiaomi_sweet rev-parse --short HEAD).
+
+          ### Changes
+
+          ${changes:-- No changes since the previous build.}
+
+          Phones on astraOS update from Settings > Software Update. The \`super.img.gz\`, \`esp.fat.gz\` and \`ota.json\` files are that update.
 
           Unzip, boot the phone into fastboot (Volume down + Power) and run \`flash-all.bat --wipe\` (Windows) or \`./flash-all.sh --wipe\` for a first install: it erases everything on the phone. Without \`--wipe\` it updates and keeps your data.
 
@@ -155,4 +190,7 @@ jobs:
           body_path: release.md
           prerelease: ${{ needs.plan.outputs.prerelease == 'true' }}
           make_latest: ${{ needs.plan.outputs.prerelease == 'true' && 'false' || 'true' }}
-          files: astra_device_xiaomi_sweet/out/*.zip
+          files: |
+            astra_device_xiaomi_sweet/out/*.zip
+            astra_device_xiaomi_sweet/out/*.gz
+            astra_device_xiaomi_sweet/out/ota.json

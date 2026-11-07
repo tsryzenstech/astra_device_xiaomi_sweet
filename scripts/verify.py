@@ -379,6 +379,12 @@ def check_firmware():
     check((VENDOR / "etc/init/sweet.rc").is_file(), "/vendor/etc/init/sweet.rc")
     prop = (VENDOR / "build.prop").read_text() if (VENDOR / "build.prop").exists() else ""
     check("ro.astra.ui.scale=" in prop, "/vendor/build.prop")
+    # Updates (see astra's docs/VERSIONING.md): where they come from and what this build is.
+    repo = re.search(r"^ro\.astra\.ota\.repo=([\w.-]+/[\w.-]+)$", prop, re.M)
+    check(bool(repo), "updates come from %s" % (repo.group(1) if repo else "nowhere (OTA_REPOSITORY)"))
+    channel = re.search(r"^ro\.astra\.ota\.channel=(stable|prerelease|local)$", prop, re.M)
+    check(bool(channel) and (VENDOR / "etc/astra-release.json").is_file(),
+          "update channel %s and the release notes" % (channel.group(1) if channel else "?"))
     check("ro.astra.display.refresh=120" in prop, "the display stays at 120 Hz, the only rate that shows a clean image")
 
 

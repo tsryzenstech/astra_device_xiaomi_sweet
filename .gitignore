@@ -2,3 +2,4 @@
 /cache/
 *.img
 *.zip
+/release.json
