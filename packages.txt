@@ -65,6 +65,8 @@ pipewire
 wireplumber
 pipewire-pulse
 ?pipewire-spa-bluez
+# Gives the Bluetooth controller its address (see launch.sh).
+?bluez-btmgmt
 alsa-utils
 ?alsa-ucm-conf
 # Answers the ADSP's sensor process, which otherwise crashes the ADSP.

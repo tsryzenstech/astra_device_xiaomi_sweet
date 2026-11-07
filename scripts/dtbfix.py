@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-"""Corrects the kernel's device tree: two interconnect references and the ADSP.
+"""Corrects the kernel's device tree: two interconnect references and the amplifiers.
 
-The ADSP stays off until audio works. Its sensor process crashes about every 40 s
-("USER-PD DOG detects stalled init"), nothing on the phone serves it, and the kernel
-restarts the ADSP each time. One of these restarts sooner or later froze the phone,
-always right after q6afe_probe, seen at 86 s and at 247 s. Audio and sensors work
-through the ADSP and do not work yet anyway. "fail" is the device tree's own word
-for a device that cannot operate, and it has the length of "okay".
+The speaker amplifiers are AW88263S, which is what the tree says, and what no driver
+binds to. The aw88261 driver handles them (it knows their chip id, 0x2032) but only
+binds to "awinic,aw88261". That name, with one zero more, has the same length.
 
 sm7150.dtsi names endpoints on providers that do not own them, and the number
 then means another endpoint of that provider:
@@ -36,7 +33,8 @@ MASTER_QUP_1 = 2   # in aggre2_noc's numbering; in aggre1_noc's it is MASTER_TSI
 MASTER_SDCC_2 = 4  # in aggre1_noc's numbering; in aggre2_noc's it is MASTER_CRYPTO_CORE_0
 QUP1_WRAPPER = "geniqup@ac0000"
 SD_CARD = "mmc@8804000"
-ADSP = "remoteproc@62400000"
+AMP_OLD = b"awinic,aw88263s\0"
+AMP_NEW = b"awinic,aw88261\0\0"
 
 
 def properties(blob):
@@ -107,12 +105,17 @@ def qup1_votes(blob):
                if QUP1_WRAPPER in path.split("/") and provider == aggre2 and endpoint == MASTER_QUP_1)
 
 
-def adsp_status(blob):
-    """(the ADSP's status, the offset of its value)."""
-    for path, name, off, length in properties(blob):
-        if name == "status" and path.rsplit("/", 1)[-1] == ADSP:
-            return bytes(blob[off:off + length]).rstrip(b"\0").decode(), off
-    raise ValueError("the ADSP is not in this device tree")
+def amplifiers(blob):
+    """Offsets of the amplifiers' compatible strings, and how many are already right."""
+    old, right = [], 0
+    for _, name, off, length in properties(blob):
+        if name == "compatible":
+            value = bytes(blob[off:off + length])
+            if value == AMP_OLD:
+                old.append(off)
+            elif value == AMP_NEW:
+                right += 1
+    return old, right
 
 
 def main():
@@ -124,16 +127,16 @@ def main():
     fixes = wrong(blob)
     for _, cell, provider in fixes:
         struct.pack_into(">I", blob, cell, provider)
-    status, off = adsp_status(blob)
-    if status == "okay":
-        blob[off:off + 4] = b"fail"
-    if wrong(blob) or not qup1_votes(blob) or adsp_status(blob)[0] != "fail":
+    for off in amplifiers(blob)[0]:
+        blob[off:off + len(AMP_NEW)] = AMP_NEW
+    old, right = amplifiers(blob)
+    if wrong(blob) or not qup1_votes(blob) or old or not right:
         sys.exit("dtbfix: the device tree is not as expected")
     if blob != original:
         with open(sys.argv[1], "wb") as f:
             f.write(blob)
-    print("dtbfix: %d references corrected, %d QUP1 references right, ADSP %s"
-          % (len(fixes), qup1_votes(blob), adsp_status(blob)[0]))
+    print("dtbfix: %d references corrected, %d QUP1 references right, %d amplifiers"
+          % (len(fixes), qup1_votes(blob), right))
 
 
 if __name__ == "__main__":

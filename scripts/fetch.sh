@@ -20,3 +20,10 @@ fi
 
 log "firmware: $FIRMWARE_REPO ($FIRMWARE_REF)"
 git_fetch "$FIRMWARE_REPO" "$FIRMWARE_REF" "$SRC/firmware"
+
+log "amplifier calibration"
+need curl sha256sum
+if ! echo "$AW_ACF_SHA256  $SRC/aw88261_acf.bin" | sha256sum -c --status 2>/dev/null; then
+    curl -fsSL "$AW_ACF_URL" -o "$SRC/aw88261_acf.bin" || die "cannot download the amplifiers' calibration file"
+    echo "$AW_ACF_SHA256  $SRC/aw88261_acf.bin" | sha256sum -c --status || die "the amplifiers' calibration file does not match its checksum"
+fi

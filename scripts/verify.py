@@ -364,6 +364,8 @@ def check_firmware():
     zap = "qcom/sm7150/xiaomi/sweet/a615_zap.mbn"
     check((RAMDISK / "lib/firmware" / zap).is_file(), "GPU zap shader in the ramdisk")
     check((VENDOR / "firmware" / zap).is_file(), "GPU zap shader in /vendor/firmware")
+    acf = VENDOR / "firmware/aw88261_acf.bin"
+    check(acf.is_file() and sha256(acf) == env["AW_ACF_SHA256"], "the amplifiers' calibration file")
     # The names the kernel asks for lead to what is on the phone (see build-rootfs.sh).
     for link, target in (("crbtfw01.tlv.zst", "crbtfw21.tlv.zst"), ("crnv01.bin.zst", "crnv21.bin.zst")):
         check(os.readlink(VENDOR / "firmware/qca" / link) == "/lib/firmware/qca/" + target
@@ -409,7 +411,8 @@ def check_efi():
     left, votes = dtbfix.wrong(tree), dtbfix.qup1_votes(tree)
     check(not left and votes > 0, "QUP1 and the SD card vote on the right interconnect",
           "%d wrong, %d right" % (len(left), votes))
-    check(dtbfix.adsp_status(tree)[0] == "fail", "the ADSP stays off until audio works")
+    old, right = dtbfix.amplifiers(tree)
+    check(not old and right == 2, "the amplifiers bind to their driver", "%d old, %d right" % (len(old), right))
     image = (OUT / "Image").read_bytes()
     check(image[0x38:0x3c] == b"ARMd", "kernel is an arm64 Image")
 

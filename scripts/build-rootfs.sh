@@ -120,6 +120,7 @@ if [ -d "$SRC/firmware/usr/lib/firmware" ]; then
 else
     warn "device firmware missing: GPU, audio and modem will not start"
 fi
+cp "$SRC/aw88261_acf.bin" "$VENDOR_ROOT/firmware/aw88261_acf.bin"
 # sweet's Bluetooth chip (SOC 0x40020140, ROM 0x0201) is declared a WCN3998, for
 # which the kernel names firmware from another part of the version: it asks for
 # crbtfw01, which does not exist. linux-firmware's 21 is the one for this ROM: tried

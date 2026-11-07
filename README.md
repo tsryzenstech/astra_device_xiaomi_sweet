@@ -40,13 +40,18 @@ board, which an erased partition avoids.
 >   froze the phone. Tried on the phone: the touch works with the correction, with
 >   nothing else changed. It belongs upstream in the kernel's device tree.
 >
-> - **The ADSP stays off** (`dtbfix.py` again). Its sensor process crashes about
->   every 40 s and the kernel restarts it; two freezes ended right after such a
->   restart. Audio and sensors need it and do not work yet: to work on them, start
->   by making it stop crashing.
+> - **hexagonrpcd must not write to the kernel log.** The ADSP's sensor process asks
+>   it for files. With its output on the kernel log, where init puts services, that
+>   process stalls and takes the ADSP down about every 40 s, and two freezes ended
+>   right after such a restart. With its output elsewhere: no crash at all.
+> - **The speaker amplifiers** bind to the aw88261 driver (`dtbfix.py`) with the
+>   calibration file from the stock ROM (`board.conf`). The sound card appears and
+>   the clocks reach the amplifier, but it reports a boost over-current and does not
+>   start. **There is no sound from the speaker yet.**
 >
-> Not working yet: audio, camera, fingerprint, proximity. Bluetooth's chip takes the
-> firmware (see `build-rootfs.sh`); turning it on from the system is not tried yet.
+> Not working yet: speaker and microphone, camera, fingerprint. Bluetooth's controller
+> gets its address in `launch.sh`, the firmware in `build-rootfs.sh`; turning it on
+> was tried by hand, audio over it not yet.
 
 ## What stays fixed
 
