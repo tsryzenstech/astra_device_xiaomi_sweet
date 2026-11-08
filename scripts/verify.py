@@ -368,7 +368,7 @@ def check_firmware():
     acf = VENDOR / "firmware/aw88261_acf.bin"
     # The downloaded file (fetch.sh checks AW_ACF_SHA256) as acffix.py corrects it.
     check(acf.is_file() and sha256(acf) == acffix.FIXED_SHA256, "the amplifiers' calibration file, corrected")
-    for rel in ("conf.d/sm8250/Redmi Note 10 Pro.conf", "Xiaomi/sweet/HiFi.conf"):
+    for rel in ("conf.d/sm8250/xiaomi-XiaomiRedmiNote10Pro.conf", "Xiaomi/sweet/HiFi.conf"):
         check((SYSTEM / "system/share/alsa/ucm2" / rel).is_file(), "the speaker's ALSA profile " + rel)
     # The names the kernel asks for lead to what is on the phone (see build-rootfs.sh).
     for link, target in (("crbtfw01.tlv.zst", "crbtfw21.tlv.zst"), ("crnv01.bin.zst", "crnv21.bin.zst")):
