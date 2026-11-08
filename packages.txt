@@ -21,6 +21,9 @@ libdrm
 libinput
 libxkbcommon
 fontconfig
+# Web pages: the common fonts they ask for (fonts.conf)
+?font-liberation
+?font-dejavu
 font-noto-cjk
 font-noto-arabic
 font-noto-hebrew
