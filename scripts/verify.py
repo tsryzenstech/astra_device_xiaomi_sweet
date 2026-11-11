@@ -230,6 +230,16 @@ def check_layout():
     for tool in ("rmtfs", "tqftpserv"):
         check(in_image(SYSTEM / "system/bin" / tool), "/system/bin/%s, for the modem and Wi-Fi" % tool)
     check(in_image(SYSTEM / "system/media/bootanimation/logo.png"), "the boot logo is in the image")
+    # The modem: ModemManager refuses every call while PolicyKit does not answer,
+    # and PolicyKit does not start without its user.
+    passwd = (SYSTEM / "system/etc/passwd").read_text()
+    if in_image(SYSTEM / "system/bin/ModemManager") and in_image(LIB / "polkit-1/polkitd"):
+        check(any(line.startswith("polkitd:") for line in passwd.splitlines()) and "launch.sh polkitd" in (SYSTEM / "system/etc/init/connectivity.rc").read_text(),
+              "PolicyKit has its user and its service (the modem's calls)", "astra is older than this repository expects")
+    # NFC: the controller's driver, which the kernel's own NFC support reads tags with.
+    modules = LIB / "modules" / env["KERNEL_RELEASE"] / "kernel"
+    check(any(modules.glob("drivers/nfc/nxp-nci/nxp-nci_i2c.ko*")) and any(modules.glob("net/nfc/nfc.ko*")),
+          "the NFC controller's driver is in the image")
     script = SYSTEM / "system/bin/astra-diag"
     check(in_image(SYSTEM / "system/bin/disptest") and script.is_file() and os.access(script, os.X_OK) and
           b"\r" not in script.read_bytes() and in_image(SYSTEM / "system/etc/init/diag.rc"), "the diagnostics are in the image")
@@ -423,6 +433,14 @@ def check_efi():
           "%d wrong, %d right" % (len(left), votes))
     old, right = dtbfix.amplifiers(tree)
     check(not old and right == 2, "the amplifiers bind to their driver", "%d old, %d right" % (len(old), right))
+    flash = dtbfix.flash_led(tree)
+    check(bool(flash) and flash[1] == dtbfix.OKAY, "the flash LED (the torch) is on in the device tree")
+    # The corrected tree, read by the device tree compiler itself.
+    if shutil.which("dtc"):
+        dts = subprocess.run(["dtc", "-I", "dtb", "-O", "dts", "-q", str(dtb)], capture_output=True, text=True)
+        node = dts.stdout.partition("led-controller@d300 {")[2].partition("led-1 {")[0]
+        check(dts.returncode == 0 and 'status = "okay"' in node, "dtc reads the corrected device tree",
+              dts.stderr.strip()[:200])
     image = (OUT / "Image").read_bytes()
     check(image[0x38:0x3c] == b"ARMd", "kernel is an arm64 Image")
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-"""Corrects the kernel's device tree: two interconnect references and the amplifiers.
+"""Corrects the kernel's device tree: two interconnect references, the amplifiers
+and the flash LED.
 
 The speaker amplifiers are AW88263S, which is what the tree says, and what no driver
 binds to. The aw88261 driver handles them (it knows their chip id, 0x2032) but only
@@ -18,7 +19,11 @@ to be in use. Once all drivers have loaded, sync_state drops those votes, and th
 first access to a QUP1 register stops the CPU on the bus: on sweet, the first
 touch (the touchscreen is on i2c7) froze the whole phone until the watchdog reset.
 
-Only cells change, so the tree keeps its size. Running it twice changes nothing.
+The flash LED (the torch) is described for all of Xiaomi's SM7150 phones, and each
+of them then turns its controller on, except sweet: "disabled" becomes "okay". The
+four bytes that frees become a NOP, which a device tree may hold between properties.
+
+Nothing moves, so the tree keeps its size. Running it twice changes nothing.
 
   dtbfix.py FILE     corrects the file in place
 """
@@ -35,6 +40,9 @@ QUP1_WRAPPER = "geniqup@ac0000"
 SD_CARD = "mmc@8804000"
 AMP_OLD = b"awinic,aw88263s\0"
 AMP_NEW = b"awinic,aw88261\0\0"
+FLASH_LED = "led-controller@d300"
+DISABLED = b"disabled\0"
+OKAY = b"okay\0"
 
 
 def properties(blob):
@@ -118,6 +126,28 @@ def amplifiers(blob):
     return old, right
 
 
+def flash_led(blob):
+    """The flash LED controller's status: (offset of its value, the value), or None."""
+    for path, name, off, length in properties(blob):
+        if name == "status" and path.rsplit("/", 1)[-1] == FLASH_LED:
+            return off, bytes(blob[off:off + length])
+    return None
+
+
+def enable_flash_led(blob):
+    """Turns the flash LED controller on. True when the tree changed."""
+    found = flash_led(blob)
+    if not found or found[1] != DISABLED:
+        return False
+    off = found[0]
+    # A property is its length, its name and its value padded to four bytes:
+    # 9 bytes took 12, 5 take 8, and a NOP stands where the last four were.
+    struct.pack_into(">I", blob, off - 8, len(OKAY))
+    blob[off:off + 8] = OKAY.ljust(8, b"\0")
+    struct.pack_into(">I", blob, off + 8, NOP)
+    return True
+
+
 def main():
     if len(sys.argv) != 2:
         sys.exit(__doc__)
@@ -129,13 +159,15 @@ def main():
         struct.pack_into(">I", blob, cell, provider)
     for off in amplifiers(blob)[0]:
         blob[off:off + len(AMP_NEW)] = AMP_NEW
+    enable_flash_led(blob)
     old, right = amplifiers(blob)
-    if wrong(blob) or not qup1_votes(blob) or old or not right:
+    flash = flash_led(blob)
+    if wrong(blob) or not qup1_votes(blob) or old or not right or not flash or flash[1] != OKAY:
         sys.exit("dtbfix: the device tree is not as expected")
     if blob != original:
         with open(sys.argv[1], "wb") as f:
             f.write(blob)
-    print("dtbfix: %d references corrected, %d QUP1 references right, %d amplifiers"
+    print("dtbfix: %d references corrected, %d QUP1 references right, %d amplifiers, the flash LED on"
           % (len(fixes), qup1_votes(blob), right))
 
 

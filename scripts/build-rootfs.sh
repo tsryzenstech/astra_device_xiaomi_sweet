@@ -69,6 +69,14 @@ rm -rf "$SYSTEM_ROOT/system/lib/apk" "$SYSTEM_ROOT/system/etc/apk" "$SYSTEM_ROOT
 # BusyBox (and overwrote the build machine's busybox).
 cp -a --remove-destination "$OUT/astra-install/." "$SYSTEM_ROOT/"
 [ -L "$SYSTEM_ROOT/system/bin/init" ] && die "/system/bin/init is a link, not astraOS init"
+# PolicyKit (ModemManager asks it who may use the modem) reads its rules as its
+# own user, which on the phone is the one of astraOS's passwd.
+polkit_id=$(awk -F: '$1 == "polkitd" { print $3 ":" $4 }' "$SYSTEM_ROOT/system/etc/passwd")
+if [ -n "$polkit_id" ]; then
+    for d in "$SYSTEM_ROOT/system/etc/polkit-1/rules.d" "$SYSTEM_ROOT/system/share/polkit-1/rules.d"; do
+        if [ -d "$d" ]; then chown -R "$polkit_id" "$d" 2>/dev/null || warn "cannot give $d to polkitd"; fi
+    done
+fi
 # Cloudy's engine (scripts/build-llama.sh)
 [ -d "$OUT/llama-install" ] && cp -a --remove-destination "$OUT/llama-install/." "$SYSTEM_ROOT/"
 # The modem's helpers (scripts/build-qcom-tools.sh)
