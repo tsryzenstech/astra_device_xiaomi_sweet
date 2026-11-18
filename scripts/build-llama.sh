@@ -13,6 +13,9 @@ if [ ! -d "$src/.git" ]; then
 fi
 build="$OUT/llama-build"
 log "llama.cpp: building llama-server (Cortex-A76/A55: armv8.2-a with dotprod)"
+# Cloudy talks to the server's API only. The embedded web UI is not built, and not
+# downloaded either (its prebuilt assets come from a Hugging Face bucket that changes
+# under the tag: a build broke on a missing file).
 cmake -S "$src" -B "$build" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_SHARED_LIBS=OFF \
@@ -22,7 +25,7 @@ cmake -S "$src" -B "$build" -G Ninja \
     -DLLAMA_BUILD_TESTS=OFF \
     -DLLAMA_BUILD_EXAMPLES=OFF \
     -DLLAMA_BUILD_TOOLS=ON \
-    -DLLAMA_BUILD_SERVER=ON
+    -DLLAMA_BUILD_SERVER=ON     -DLLAMA_BUILD_UI=OFF     -DLLAMA_USE_PREBUILT_UI=OFF
 cmake --build "$build" --target llama-server -j "$JOBS"
 # Its own folder: the astra step clears astra-install.
 mkdir -p "$OUT/llama-install/system/bin"
