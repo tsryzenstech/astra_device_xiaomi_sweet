@@ -69,7 +69,8 @@ jobs:
           import json
           v = json.load(open("astra/version.json"))
           letter = {"alpha": "a", "beta": "b", "delta": "d", "stable": ""}[v["channel"]]
-          print("%s.%s%s" % (v["major"], v["minor"], letter))')
+          patch = ".%s" % v["patch"] if v.get("patch") else ""
+          print("%s.%s%s%s" % (v["major"], v["minor"], patch, letter))')
           git fetch --tags --force -q
           re=$(printf '%s' "$version" | sed 's/[.]/\\./g')
           last=$(git tag -l "$version-rev*" | sed -n "s/^$re-rev\([0-9][0-9]*\)\$/\1/p" | sort -n | tail -1)
