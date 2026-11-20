@@ -24,6 +24,10 @@ on early-init
     write /sys/module/firmware_class/parameters/path /vendor/firmware
 
 on boot
+    # The charger (qcom_smbx) and the fuel gauge (qcom_qg) are modules: if the device scan did not
+    # bring them in (a missing alias), they are loaded here, so that the phone charges.
+    exec -- /system/bin/modprobe qcom_smbx
+    exec -- /system/bin/modprobe qcom_qg
     # Kryo 470: 6x little (policy0) + 2x big (policy6) cores.
     write /sys/devices/system/cpu/cpufreq/policy0/scaling_governor schedutil
     write /sys/devices/system/cpu/cpufreq/policy6/scaling_governor schedutil
